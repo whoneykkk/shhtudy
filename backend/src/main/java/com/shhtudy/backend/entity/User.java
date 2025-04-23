@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 
 public class User {
     @Id
-    private String id;
+    private String firebaseUid;
 
     private String name;
 
