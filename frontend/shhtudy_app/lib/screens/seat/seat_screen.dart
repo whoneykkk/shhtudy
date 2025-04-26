@@ -32,7 +32,7 @@ class SeatScreen extends StatefulWidget {
 }
 
 class _SeatScreenState extends State<SeatScreen> {
-  String? currentSeat;
+  String? currentSeatCode;
   String selectedZone = 'A구역';
   final List<String> zones = ['A구역', 'B구역', 'C구역', 'D구역'];
   final TextEditingController _messageController = TextEditingController();
@@ -250,7 +250,7 @@ class _SeatScreenState extends State<SeatScreen> {
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      currentSeat ?? '--',
+                      currentSeatCode ?? '--',
                       style: TextStyle(
                         color: AppTheme.textColor,
                         fontWeight: FontWeight.bold,
