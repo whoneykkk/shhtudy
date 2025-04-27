@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Table(name = "seats")
@@ -13,9 +14,9 @@ import java.time.LocalDateTime;
 
 public class Seat {
     @Id
-    private int seat_id;
+    private int seatId;
 
-    private String location_code;
+    private String locationCode;
 
     @Enumerated(EnumType.STRING)
     private Status status=Status.빈자리;
@@ -24,6 +25,7 @@ public class Seat {
         빈자리,주의,양호,조용,내좌석
     }
 
-
+    @OneToMany(mappedBy = "currentSeat")
+    private List<User> users; // 보통 이건 잘 안 씀
 
 }

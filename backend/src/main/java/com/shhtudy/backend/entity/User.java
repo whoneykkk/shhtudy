@@ -36,4 +36,9 @@ public class User {
         주의, 양호, 조용
     }
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "current_seat_id") // 또는 current_user_id가 seats에서 user로 연결된 경우
+    private Seat currentSeat;
+
+
 }
