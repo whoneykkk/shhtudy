@@ -30,10 +30,10 @@ public class User {
     private int points = 0;
 
     @Enumerated(EnumType.STRING)     // enum 값을 문자열로 저장
-    private Grade grade = Grade.조용;
+    private Grade grade = Grade.GOOD;
 
     public enum Grade {
-        주의, 양호, 조용
+        WARNING, GOOD, SILENT
     }
 
     @ManyToOne(fetch = FetchType.LAZY)
