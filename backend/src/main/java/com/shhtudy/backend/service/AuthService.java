@@ -39,7 +39,8 @@ public class AuthService {
         response.setName(user.getName());
         response.setGrade(user.getGrade().name());
         response.setRemainingTime(user.getRemainingTime());
-        response.setCurrentSeat(user.getCurrentSeat() != null ? user.getCurrentSeat().getLocationCode() : null);
+        response.setAverageDecibel(user.getAverageDecibel());
+        response.setNoiseOccurrence(user.getNoiseOccurrence());
 
         return response;
 
