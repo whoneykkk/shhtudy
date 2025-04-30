@@ -36,6 +36,10 @@ public class User {
         WARNING, GOOD, SILENT
     }
 
-    private int averageDecibel;
-    private int noiseOccurrence;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "current_seat_id") // users 테이블에 foreign key 생성
+    private Seat currentSeat;
+
+    private int averageDecibel; //TODO: noise 엔티티 생성 시 추가
+    private int noiseOccurrence;//TODO: noise 엔티티 생성 시 추가
 }
