@@ -27,7 +27,7 @@ public class User {
 
     private int remainingTime = 0;
 
-    private int points = 0;
+    private int mannerScore = 0;
 
     @Enumerated(EnumType.STRING)     // enum 값을 문자열로 저장
     private Grade grade = Grade.GOOD;
@@ -37,8 +37,9 @@ public class User {
     }
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "current_seat_id") // 또는 current_user_id가 seats에서 user로 연결된 경우
+    @JoinColumn(name = "current_seat_id") // users 테이블에 foreign key 생성
     private Seat currentSeat;
 
-
+    private int averageDecibel; //TODO: noise 엔티티 생성 시 추가
+    private int noiseOccurrence;//TODO: noise 엔티티 생성 시 추가
 }

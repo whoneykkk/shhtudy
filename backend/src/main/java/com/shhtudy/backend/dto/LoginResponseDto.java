@@ -13,4 +13,6 @@ public class LoginResponseDto {
     private String grade;
     private int remainingTime;
     private String currentSeat;
+    private int averageDecibel;
+    private int noiseOccurrence;
 }

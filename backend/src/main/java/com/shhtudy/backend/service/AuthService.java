@@ -39,10 +39,15 @@ public class AuthService {
         response.setName(user.getName());
         response.setGrade(user.getGrade().name());
         response.setRemainingTime(user.getRemainingTime());
-        response.setCurrentSeat(user.getCurrentSeat() != null ? user.getCurrentSeat().getLocationCode() : null);
+        response.setAverageDecibel(user.getAverageDecibel());
+        response.setNoiseOccurrence(user.getNoiseOccurrence());
+
+        // 현재 좌석 위치가 있으면 locationCode 추가
+        if (user.getCurrentSeat() != null) {
+            response.setCurrentSeat(user.getCurrentSeat().getLocationCode());
+        }
 
         return response;
-
     }
 
 }

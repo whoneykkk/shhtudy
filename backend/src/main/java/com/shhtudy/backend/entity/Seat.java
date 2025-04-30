@@ -3,9 +3,6 @@ package com.shhtudy.backend.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.LocalDateTime;
-import java.util.List;
-
 @Entity
 @Table(name = "seats")
 @Getter
@@ -28,8 +25,4 @@ public class Seat {
         SILENT,
         MY_SEAT
     }
-
-    @OneToMany(mappedBy = "currentSeat")
-    private List<User> users; // 보통 이건 잘 안 씀
-
 }
