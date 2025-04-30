@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
+import '../../services/api_service.dart';
 import 'signup_screen.dart';
 import '../home/home_screen.dart';
 
@@ -11,7 +12,43 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  final _phoneController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _apiService = ApiService();
   bool isAutoLogin = false;
+
+  Future<void> _login() async {
+    try {
+      final phone = _phoneController.text;
+      final password = _passwordController.text;
+
+      if (phone.isEmpty || password.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('전화번호와 비밀번호를 입력해주세요')),
+        );
+        return;
+      }
+
+      await _apiService.login(
+        phone: phone,
+        password: password,
+      );
+
+      // 로그인 성공 시 홈 화면으로 이동
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('로그인에 실패했습니다')),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -60,6 +97,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: TextField(
+                  controller: _phoneController,
                   decoration: InputDecoration(
                     hintText: '전화번호를 입력해주세요',
                     border: InputBorder.none,
@@ -79,6 +117,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: TextField(
+                  controller: _passwordController,
                   obscureText: true,
                   decoration: InputDecoration(
                     hintText: '비밀번호를 입력해주세요',
@@ -115,12 +154,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 24),
               // 로그인 버튼
               ElevatedButton(
-                onPressed: () {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (context) => const HomeScreen()),
-                  );
-                },
+                onPressed: _login,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primaryColor,
                   padding: const EdgeInsets.symmetric(vertical: 16),

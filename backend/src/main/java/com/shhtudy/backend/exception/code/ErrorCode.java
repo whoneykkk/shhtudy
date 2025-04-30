@@ -13,10 +13,11 @@ public enum ErrorCode {
 
     // 사용자/계정 관련 오류 (-1000 ~ -1999)
     DUPLICATE_USER(-1001, "이미 가입된 사용자입니다.", HttpStatus.CONFLICT),
-    USER_NOT_FOUND(-1002, "존재하지 않는 사용자입니다.", HttpStatus.NOT_FOUND),
-    INVALID_PASSWORD(-1003, "비밀번호가 일치하지 않습니다.", HttpStatus.UNAUTHORIZED),
-    INVALID_CREDENTIALS(-1004, "전화번호 또는 비밀번호가 올바르지 않습니다.", HttpStatus.UNAUTHORIZED),
-    INVALID_FIREBASE_TOKEN(-1005, "유효하지 않은 Firebase 토큰입니다.", HttpStatus.UNAUTHORIZED),
+    DUPLICATE_PHONE_NUMBER(-1002, "이미 사용 중인 전화번호입니다.", HttpStatus.CONFLICT),
+    USER_NOT_FOUND(-1003, "존재하지 않는 사용자입니다.", HttpStatus.NOT_FOUND),
+    INVALID_PASSWORD(-1004, "비밀번호가 일치하지 않습니다.", HttpStatus.UNAUTHORIZED),
+    INVALID_CREDENTIALS(-1005, "전화번호 또는 비밀번호가 올바르지 않습니다.", HttpStatus.UNAUTHORIZED),
+    INVALID_FIREBASE_TOKEN(-1006, "유효하지 않은 Firebase 토큰입니다.", HttpStatus.UNAUTHORIZED),
 
     // 시스템 오류 (-9000 이상)
     INTERNAL_ERROR(-9001, "서버 내부 오류입니다.", HttpStatus.INTERNAL_SERVER_ERROR);

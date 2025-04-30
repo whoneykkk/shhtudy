@@ -1,6 +1,8 @@
 package com.shhtudy.backend.service;
 
 import com.shhtudy.backend.dto.SignUpRequestDto;
+import com.shhtudy.backend.dto.LoginRequestDto;
+import com.shhtudy.backend.dto.LoginResponseDto;
 import com.shhtudy.backend.entity.User;
 import com.shhtudy.backend.exception.CustomException;
 import com.shhtudy.backend.exception.code.ErrorCode;
@@ -13,12 +15,11 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.FirebaseToken;
 
-
 @Service
 @RequiredArgsConstructor
-
 public class UserService {
     private final UserRepository userRepository;
+    private final BCryptPasswordEncoder passwordEncoder;
 
     public void signUp(SignUpRequestDto request, String idToken) {
 
@@ -48,11 +49,22 @@ public class UserService {
         user.setName(request.getName());
         user.setPhoneNumber(request.getPhoneNumber());
 
-        BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
-        user.setPassword(encoder.encode(request.getPassword()));
-        user.setPassword(request.getPassword());
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
 
         userRepository.save(user);
     }
 
+    public LoginResponseDto login(LoginRequestDto request) {
+        // 1. 전화번호로 사용자 찾기
+        User user = userRepository.findByPhoneNumber(request.getPhoneNumber())
+            .orElseThrow(() -> new CustomException(ErrorCode.INVALID_CREDENTIALS));
+
+        // 2. 비밀번호 확인
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            throw new CustomException(ErrorCode.INVALID_CREDENTIALS);
+        }
+
+        // 3. 로그인 성공
+        return new LoginResponseDto(user.getFirebaseUid(), "로그인 성공");
+    }
 }

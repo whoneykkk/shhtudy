@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "712677754253",
+    "project_id": "shhtudy-44b72",
+    "storage_bucket": "shhtudy-44b72.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:712677754253:android:eb5930be254b1ef75969c4",
+        "android_client_info": {
+          "package_name": "com.example.shhtudy_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBwZdr5yGxyt0wpH6UxeHTklNMkpGVNjoE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
