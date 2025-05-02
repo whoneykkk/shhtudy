@@ -13,7 +13,8 @@ public class Seat {
     @Id
     private int seatId;
 
-    private String locationCode;
+    @Column(name = "location_code", nullable = false, columnDefinition = "VARCHAR(255) DEFAULT '-'")
+    private String locationCode = "-";
 
     @Enumerated(EnumType.STRING)
     private Status status = Status.EMPTY;
