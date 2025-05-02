@@ -5,6 +5,6 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class NotificationStatusResponseDto {
+public class AlertStatusResponseDto {
     private boolean hasUnreadMessages;
 }
