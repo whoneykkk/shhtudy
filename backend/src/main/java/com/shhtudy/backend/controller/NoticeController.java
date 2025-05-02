@@ -6,10 +6,7 @@ import com.shhtudy.backend.service.FirebaseAuthService;
 import com.shhtudy.backend.service.NoticeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -29,5 +26,18 @@ public class NoticeController {
         List<NoticeResponseDto> response= noticeService.getNoticeWithRaeadStatus(userId);
 
         return ResponseEntity.ok(ApiResponse.success(response, "공지사항 조회 성공"));
+    }
+
+    @PostMapping("/{noticeId}/read")
+    public ResponseEntity<ApiResponse<Void>> readNotice(
+            @RequestHeader("Authorization") String authorizationHeader,
+            @PathVariable Long noticeId
+    ){
+        String idToken = authorizationHeader.replace("Bearer ", "");
+        String userId = firebaseAuthService.verifyIdToken(idToken);
+
+        noticeService.markAsRead(userId, noticeId);
+
+        return ResponseEntity.ok(ApiResponse.success(null, "읽음 처리 완료"));
     }
 }
