@@ -1,5 +1,6 @@
 package com.shhtudy.backend.repository;
 
+import com.shhtudy.backend.entity.Notice;
 import com.shhtudy.backend.entity.NoticeRead;
 import com.shhtudy.backend.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -14,4 +15,6 @@ public interface NoticeReadRepository extends JpaRepository<NoticeRead, Long> {
     boolean existsUnreadNotices(@Param("userId") String userId);
 
     List<NoticeRead> findAllByUser(User user);
+
+    boolean existsByUserAndNotice(User user, Notice notice);
 }
