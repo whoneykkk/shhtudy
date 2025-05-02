@@ -25,5 +25,10 @@ public class NoticeRead {
     @JoinColumn(name = "user_id")
     private User user;
 
-    private LocalDateTime readAt = LocalDateTime.now();
+    private LocalDateTime readAt;
+
+    @PrePersist
+    protected void prePersist() {
+        this.readAt = LocalDateTime.now();
+    }
 }
