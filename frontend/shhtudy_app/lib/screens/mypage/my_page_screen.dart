@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../auth/login_screen.dart';
+import 'notice_screen.dart';
+import 'message_screen.dart';
 
 // TODO: 실제 데이터 모델 구현 필요
 class Notice {
@@ -117,12 +119,18 @@ class MyPageScreen extends StatelessWidget {
 
   void _showAllNotices(BuildContext context) {
     // TODO: 전체 공지사항 화면으로 이동
-    print('전체 공지사항 보기');
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const NoticeScreen()),
+    );
   }
 
   void _showAllMessages(BuildContext context) {
     // TODO: 전체 쪽지함 화면으로 이동
-    print('전체 쪽지함 보기');
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const MessageScreen()),
+    );
   }
 
   void _showNoticeDetail(BuildContext context, Notice notice) {
