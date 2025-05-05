@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 
 public class User {
     @Id
-    private String id;
+    private String firebaseUid;
 
     private String name;
 
@@ -27,13 +27,19 @@ public class User {
 
     private int remainingTime = 0;
 
-    private int points = 0;
+    private int mannerScore = 0;
 
     @Enumerated(EnumType.STRING)     // enum 값을 문자열로 저장
-    private Grade grade = Grade.조용;
+    private Grade grade = Grade.GOOD;
 
     public enum Grade {
-        주의, 양호, 조용
+        WARNING, GOOD, SILENT
     }
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "current_seat_id") // users 테이블에 foreign key 생성
+    private Seat currentSeat;
+
+    private int averageDecibel; //TODO: noise 엔티티 생성 시 추가
+    private int noiseOccurrence;//TODO: noise 엔티티 생성 시 추가
 }

@@ -3,8 +3,6 @@ package com.shhtudy.backend.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.LocalDateTime;
-
 @Entity
 @Table(name = "seats")
 @Getter
@@ -13,17 +11,19 @@ import java.time.LocalDateTime;
 
 public class Seat {
     @Id
-    private int seat_id;
+    private int seatId;
 
-    private String location_code;
+    @Column(name = "location_code", nullable = false, columnDefinition = "VARCHAR(255) DEFAULT '-'")
+    private String locationCode = "-";
 
     @Enumerated(EnumType.STRING)
-    private Status status=Status.빈자리;
+    private Status status = Status.EMPTY;
 
     public enum Status {
-        빈자리,주의,양호,조용,내좌석
+        EMPTY,
+        WARNING,
+        GOOD,
+        SILENT,
+        MY_SEAT
     }
-
-
-
 }
