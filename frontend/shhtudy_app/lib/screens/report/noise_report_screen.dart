@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../theme/app_theme.dart';
 import '../mypage/my_page_screen.dart';
+import 'noise_log_screen.dart';
 
 class NoiseReportScreen extends StatefulWidget {
   const NoiseReportScreen({super.key});
@@ -356,10 +357,20 @@ class _NoiseReportScreenState extends State<NoiseReportScreen> {
                                   ),
                                 ),
                                 const Spacer(),
-                                Icon(
-                                  Icons.add,
-                                  color: AppTheme.primaryColor,
-                                  size: 20,
+                                GestureDetector(
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => const NoiseLogScreen(),
+                                      ),
+                                    );
+                                  },
+                                  child: Icon(
+                                    Icons.add,
+                                    color: AppTheme.primaryColor,
+                                    size: 20,
+                                  ),
                                 ),
                               ],
                             ),

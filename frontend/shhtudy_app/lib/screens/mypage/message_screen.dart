@@ -13,64 +13,80 @@ class _MessageScreenState extends State<MessageScreen> with SingleTickerProvider
   late TabController _tabController;
   
   // 임시 쪽지 데이터
-  final List<Message> tempReceivedMessages = [
+  static final List<Message> tempReceivedMessages = [
     Message(
-      id: '1', 
-      fromSeat: 'b-4', 
+      messageId: 1, 
+      senderId: 'b-4', 
+      receiverId: 'user123',
       content: '조용히 해주세요. 책상을 두드리는 소리가 들립니다.', 
-      date: '03.19 16:25',
+      sentAt: DateTime(2024, 3, 19, 16, 25),
+      isRead: false,
       isSent: false,
     ),
     Message(
-      id: '3', 
-      fromSeat: 'c-2', 
+      messageId: 3, 
+      senderId: 'c-2', 
+      receiverId: 'user123',
       content: '자리 잠시 비울 예정인가요? 책과 노트북이 자리에 있어서 여쭤봅니다.', 
-      date: '03.18 13:40',
+      sentAt: DateTime(2024, 3, 18, 13, 40),
+      isRead: false,
       isSent: false,
     ),
     Message(
-      id: '5', 
-      fromSeat: 'a-3', 
+      messageId: 5, 
+      senderId: 'a-3', 
+      receiverId: 'user123',
       content: '창가 쪽 냉방이 너무 강한 것 같아요. 관리자에게 문의 부탁드립니다.', 
-      date: '03.15 10:15',
+      sentAt: DateTime(2024, 3, 15, 10, 15),
+      isRead: false,
       isSent: false,
     ),
     Message(
-      id: '7', 
-      fromSeat: 'd-1', 
+      messageId: 7, 
+      senderId: 'd-1', 
+      receiverId: 'user123',
       content: '전화 통화는 밖에서 부탁드립니다.', 
-      date: '03.13 14:22',
+      sentAt: DateTime(2024, 3, 13, 14, 22),
+      isRead: false,
       isSent: false,
     ),
   ];
   
-  final List<Message> tempSentMessages = [
+  static final List<Message> tempSentMessages = [
     Message(
-      id: '2', 
-      fromSeat: 'b-1', 
+      messageId: 2, 
+      senderId: 'user123',
+      receiverId: 'b-1',
       content: '죄송합니다. 앞으로 조심하겠습니다.', 
-      date: '03.19 16:32',
+      sentAt: DateTime(2024, 3, 19, 16, 32),
+      isRead: true,
       isSent: true,
     ),
     Message(
-      id: '4', 
-      fromSeat: 'c-2', 
+      messageId: 4, 
+      senderId: 'user123',
+      receiverId: 'c-2',
       content: '네, 잠시 화장실 다녀오겠습니다. 10분 내로 돌아올게요.', 
-      date: '03.18 13:45',
+      sentAt: DateTime(2024, 3, 18, 13, 45),
+      isRead: true,
       isSent: true,
     ),
     Message(
-      id: '6', 
-      fromSeat: 'a-3', 
+      messageId: 6, 
+      senderId: 'user123',
+      receiverId: 'a-3',
       content: '저도 그렇게 느꼈어요. 안내데스크에 말씀드렸습니다.', 
-      date: '03.15 10:20',
+      sentAt: DateTime(2024, 3, 15, 10, 20),
+      isRead: true,
       isSent: true,
     ),
     Message(
-      id: '8', 
-      fromSeat: 'd-5', 
+      messageId: 8, 
+      senderId: 'user123',
+      receiverId: 'd-5',
       content: '앞자리 학생분 노트북 소리가 너무 큰데 줄여주실 수 있을까요?', 
-      date: '03.12 11:05',
+      sentAt: DateTime(2024, 3, 12, 11, 5),
+      isRead: true,
       isSent: true,
     ),
   ];
@@ -79,15 +95,95 @@ class _MessageScreenState extends State<MessageScreen> with SingleTickerProvider
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    // 화면 진입 시에는 읽음 처리하지 않음
   }
 
   @override
   void dispose() {
+    // _markAllAsRead() 호출 제거
     _tabController.dispose();
     super.dispose();
   }
 
+  // 모든 받은 쪽지 읽음 처리 함수
+  void _markAllAsRead() {
+    // 실제 구현에서는 API 호출하여 서버에 읽음 상태 업데이트 필요
+    for (int i = 0; i < tempReceivedMessages.length; i++) {
+      final message = tempReceivedMessages[i];
+      tempReceivedMessages[i] = Message(
+        messageId: message.messageId,
+        senderId: message.senderId,
+        receiverId: message.receiverId,
+        content: message.content,
+        sentAt: message.sentAt,
+        isRead: true,
+        isSent: message.isSent,
+      );
+    }
+    
+    // 마이페이지의 쪽지도 읽음 처리 (필요시)
+    for (int i = 0; i < MyPageScreen.tempMessages.length; i++) {
+      final message = MyPageScreen.tempMessages[i];
+      if (!message.isSent) { // 받은 쪽지만 처리
+        MyPageScreen.tempMessages[i] = Message(
+          messageId: message.messageId,
+          senderId: message.senderId,
+          receiverId: message.receiverId,
+          content: message.content,
+          sentAt: message.sentAt,
+          isRead: true,
+          isSent: message.isSent,
+        );
+      }
+    }
+  }
+
+  // 개별 메시지 읽음 처리 함수
+  void _markAsRead(Message message) {
+    // 보낸 쪽지는 읽음 처리하지 않음
+    if (message.isSent) return;
+    
+    // 실제 구현에서는 API 호출하여 서버에 읽음 상태 업데이트 필요
+    setState(() {
+      // 현재 화면의 메시지 읽음 처리
+      for (int i = 0; i < tempReceivedMessages.length; i++) {
+        if (tempReceivedMessages[i].messageId == message.messageId) {
+          tempReceivedMessages[i] = Message(
+            messageId: message.messageId,
+            senderId: message.senderId,
+            receiverId: message.receiverId,
+            content: message.content,
+            sentAt: message.sentAt,
+            isRead: true,
+            isSent: message.isSent,
+          );
+          break;
+        }
+      }
+      
+      // 마이페이지의 메시지도 읽음 처리
+      for (int i = 0; i < MyPageScreen.tempMessages.length; i++) {
+        if (MyPageScreen.tempMessages[i].messageId == message.messageId && 
+            !MyPageScreen.tempMessages[i].isSent) {
+          MyPageScreen.tempMessages[i] = Message(
+            messageId: message.messageId,
+            senderId: message.senderId,
+            receiverId: message.receiverId,
+            content: message.content,
+            sentAt: message.sentAt,
+            isRead: true,
+            isSent: message.isSent,
+          );
+          break;
+        }
+      }
+    });
+  }
+
   void _showMessageDetail(BuildContext context, Message message) {
+    // 메시지 열람 시 즉시 읽음 처리
+    _markAsRead(message);
+    
     showDialog(
       context: context,
       builder: (context) => Dialog(
@@ -103,7 +199,7 @@ class _MessageScreenState extends State<MessageScreen> with SingleTickerProvider
               Row(
                 children: [
                   Text(
-                    message.isSent ? '-> ${message.fromSeat}' : '<- ${message.fromSeat}',
+                    message.isSent ? '-> ${message.contactSeatId}' : '<- ${message.contactSeatId}',
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
@@ -111,7 +207,7 @@ class _MessageScreenState extends State<MessageScreen> with SingleTickerProvider
                   ),
                   const Spacer(),
                   Text(
-                    message.date,
+                    message.formattedDate,
                     style: TextStyle(
                       fontSize: 12,
                       color: AppTheme.textColor.withOpacity(0.6),
@@ -173,7 +269,7 @@ class _MessageScreenState extends State<MessageScreen> with SingleTickerProvider
               Row(
                 children: [
                   Text(
-                    '답장: ${originalMessage.fromSeat}',
+                    '답장: ${originalMessage.contactSeatId}',
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -338,63 +434,75 @@ class _MessageScreenState extends State<MessageScreen> with SingleTickerProvider
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppTheme.accentColor,
-      appBar: AppBar(
+    return WillPopScope(
+      // 뒤로가기 버튼 처리
+      onWillPop: () async {
+        // 화면에서 나갈 때 모든 받은 쪽지를 읽음 처리
+        _markAllAsRead();
+        return true; // true를 반환하여 뒤로가기 허용
+      },
+      child: Scaffold(
         backgroundColor: AppTheme.accentColor,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(
-            Icons.arrow_back_ios_new,
-            color: AppTheme.primaryColor,
-            size: 20,
-          ),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          '쪽지함',
-          style: TextStyle(
-            color: AppTheme.primaryColor,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        actions: [
-          IconButton(
+        appBar: AppBar(
+          backgroundColor: AppTheme.accentColor,
+          elevation: 0,
+          leading: IconButton(
             icon: Icon(
-              Icons.edit,
+              Icons.arrow_back_ios_new,
               color: AppTheme.primaryColor,
+              size: 20,
             ),
-            onPressed: () => _showNewMessageDialog(context),
+            onPressed: () {
+              // 뒤로가기 버튼 클릭 시 명시적으로 읽음 처리 후 화면 닫기
+              _markAllAsRead();
+              Navigator.pop(context);
+            },
           ),
-        ],
-        bottom: TabBar(
+          title: Text(
+            '쪽지함',
+            style: TextStyle(
+              color: AppTheme.primaryColor,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          actions: [
+            IconButton(
+              icon: Icon(
+                Icons.edit,
+                color: AppTheme.primaryColor,
+              ),
+              onPressed: () => _showNewMessageDialog(context),
+            ),
+          ],
+          bottom: TabBar(
+            controller: _tabController,
+            labelColor: AppTheme.primaryColor,
+            unselectedLabelColor: AppTheme.textColor.withOpacity(0.6),
+            indicatorColor: AppTheme.primaryColor.withOpacity(0.7),
+            indicatorWeight: 2,
+            labelStyle: const TextStyle(fontWeight: FontWeight.bold),
+            tabs: const [
+              Tab(text: '받은쪽지'),
+              Tab(text: '보낸쪽지'),
+            ],
+          ),
+        ),
+        body: TabBarView(
           controller: _tabController,
-          labelColor: AppTheme.primaryColor,
-          unselectedLabelColor: AppTheme.textColor.withOpacity(0.6),
-          indicatorColor: AppTheme.primaryColor.withOpacity(0.7),
-          indicatorWeight: 2,
-          labelStyle: const TextStyle(fontWeight: FontWeight.bold),
-          tabs: const [
-            Tab(text: '받은쪽지'),
-            Tab(text: '보낸쪽지'),
+          children: [
+            // 받은 쪽지
+            _buildMessageList(tempReceivedMessages),
+            // 보낸 쪽지
+            _buildMessageList(tempSentMessages),
           ],
         ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          // 받은 쪽지
-          _buildMessageList(tempReceivedMessages),
-          // 보낸 쪽지
-          _buildMessageList(tempSentMessages),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showNewMessageDialog(context),
-        backgroundColor: AppTheme.primaryColor,
-        child: const Icon(Icons.edit, color: Colors.white),
-        elevation: 2,
+        floatingActionButton: FloatingActionButton(
+          onPressed: () => _showNewMessageDialog(context),
+          backgroundColor: AppTheme.primaryColor,
+          child: const Icon(Icons.edit, color: Colors.white),
+          elevation: 2,
+        ),
       ),
     );
   }
@@ -471,19 +579,31 @@ class _MessageScreenState extends State<MessageScreen> with SingleTickerProvider
                                     ),
                                     const SizedBox(width: 6),
                                     Text(
-                                      message.fromSeat,
+                                      message.contactSeatId,
                                       style: TextStyle(
                                         fontSize: 13,
                                         fontWeight: FontWeight.bold,
                                         color: message.isSent ? AppTheme.primaryColor : AppTheme.quietColor,
                                       ),
                                     ),
+                                    // 읽지 않은 쪽지 표시
+                                    if (!message.isRead && !message.isSent) ...[
+                                      const SizedBox(width: 6),
+                                      Container(
+                                        width: 8,
+                                        height: 8,
+                                        decoration: const BoxDecoration(
+                                          color: Colors.red,
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
+                                    ],
                                   ],
                                 ),
                               ),
                               const Spacer(),
                               Text(
-                                message.date,
+                                message.formattedDate,
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: AppTheme.textColor.withOpacity(0.5),
@@ -495,7 +615,7 @@ class _MessageScreenState extends State<MessageScreen> with SingleTickerProvider
                           // 메시지 내용
                           Text(
                             message.content,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 14,
                               color: AppTheme.textColor,
                             ),
