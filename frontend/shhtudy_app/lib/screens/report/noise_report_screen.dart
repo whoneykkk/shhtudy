@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fl_chart/fl_chart.dart';
 import '../../theme/app_theme.dart';
 import '../mypage/my_page_screen.dart';
 
@@ -260,14 +261,6 @@ class _NoiseReportScreenState extends State<NoiseReportScreen> {
                             ),
                           ),
                           const SizedBox(height: 4),
-                          // 슬라이드 힌트
-                          Text(
-                            '옆으로 슬라이드하여 다른 차트 보기',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: AppTheme.textColor.withOpacity(0.6),
-                            ),
-                          ),
                           const SizedBox(height: 16),
                           // 차트 슬라이더
                           SizedBox(
@@ -280,92 +273,32 @@ class _NoiseReportScreenState extends State<NoiseReportScreen> {
                                 });
                               },
                               children: [
-                                // 일간 소음 변동 차트
+                                // 일간 소음 변동 Line Chart
                                 Container(
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
                                     color: Colors.white,
                                     borderRadius: BorderRadius.circular(8),
                                   ),
-                                  child: Center(
-                                    child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Icon(
-                                          Icons.show_chart,
-                                          size: 40,
-                                          color: AppTheme.primaryColor,
-                                        ),
-                                        const SizedBox(height: 12),
-                                        Text(
-                                          '일간 소음 변동 Line Chart',
-                                          style: TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                            color: AppTheme.primaryColor,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
+                                  child: _buildDailyNoiseLineChart(),
                                 ),
-                                // 주간 소음 추이 차트
+                                // 주간 소음 추이 Bar Chart
                                 Container(
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
                                     color: Colors.white,
                                     borderRadius: BorderRadius.circular(8),
                                   ),
-                                  child: Center(
-                                    child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Icon(
-                                          Icons.bar_chart,
-                                          size: 40,
-                                          color: AppTheme.primaryColor,
-                                        ),
-                                        const SizedBox(height: 12),
-                                        Text(
-                                          '주간 소음 추이 Line/Bar Chart',
-                                          style: TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                            color: AppTheme.primaryColor,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
+                                  child: _buildWeeklyNoiseBarChart(),
                                 ),
-                                // 좌석별 소음 비율 차트
+                                // 좌석별 소음 비율 Bar Chart
                                 Container(
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
                                     color: Colors.white,
                                     borderRadius: BorderRadius.circular(8),
                                   ),
-                                  child: Center(
-                                    child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Icon(
-                                          Icons.table_chart,
-                                          size: 40,
-                                          color: AppTheme.primaryColor,
-                                        ),
-                                        const SizedBox(height: 12),
-                                        Text(
-                                          '좌석별 소음 비율 Bar Chart',
-                                          style: TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                            color: AppTheme.primaryColor,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
+                                  child: _buildSeatNoiseBarChart(),
                                 ),
                               ],
                             ),
@@ -464,7 +397,7 @@ class _NoiseReportScreenState extends State<NoiseReportScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            '최저 비율 및 종합 퍼센트',
+                            '좌석 비교 및 종합 피드백',
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -759,6 +692,518 @@ class _NoiseReportScreenState extends State<NoiseReportScreen> {
     } else {
       return '때로는 소란스러울 때도 있죠. 모두 함께 더 좋은 공간을 만들어가요!';
     }
+  }
+
+  // 일간 소음 변동 Line Chart 위젯
+  Widget _buildDailyNoiseLineChart() {
+    // 임시 데이터
+    List<FlSpot> spots = [
+      FlSpot(0, 42),  // 08:00, 42dB
+      FlSpot(1, 38),  // 09:00, 38dB
+      FlSpot(2, 45),  // 10:00, 45dB
+      FlSpot(3, 55),  // 11:00, 55dB
+      FlSpot(4, 50),  // 12:00, 50dB
+      FlSpot(5, 43),  // 13:00, 43dB
+      FlSpot(6, 47),  // 14:00, 47dB
+      FlSpot(7, 41),  // 15:00, 41dB
+      FlSpot(8, 36),  // 16:00, 36dB
+    ];
+
+    return LineChart(
+      LineChartData(
+        gridData: FlGridData(
+          show: true,
+          drawVerticalLine: true,
+          horizontalInterval: 10,
+          verticalInterval: 1,
+          getDrawingHorizontalLine: (value) {
+            return FlLine(
+              color: AppTheme.accentColor,
+              strokeWidth: 1,
+            );
+          },
+          getDrawingVerticalLine: (value) {
+            return FlLine(
+              color: AppTheme.accentColor,
+              strokeWidth: 1,
+            );
+          },
+        ),
+        titlesData: FlTitlesData(
+          show: true,
+          rightTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          topTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 30,
+              interval: 1,
+              getTitlesWidget: (value, meta) {
+                const style = TextStyle(
+                  color: Color(0xff68737d),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 10,
+                );
+                String text;
+                switch (value.toInt()) {
+                  case 0:
+                    text = '08';
+                    break;
+                  case 1:
+                    text = '09';
+                    break;
+                  case 2:
+                    text = '10';
+                    break;
+                  case 3:
+                    text = '11';
+                    break;
+                  case 4:
+                    text = '12';
+                    break;
+                  case 5:
+                    text = '13';
+                    break;
+                  case 6:
+                    text = '14';
+                    break;
+                  case 7:
+                    text = '15';
+                    break;
+                  case 8:
+                    text = '16';
+                    break;
+                  default:
+                    text = '';
+                }
+                return SideTitleWidget(
+                  axisSide: meta.axisSide,
+                  child: Text(text, style: style),
+                );
+              },
+            ),
+          ),
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              interval: 10,
+              getTitlesWidget: (value, meta) {
+                return Text(
+                  '${value.toInt()}dB',
+                  style: const TextStyle(
+                    color: Color(0xff68737d),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 10,
+                  ),
+                  textAlign: TextAlign.left,
+                );
+              },
+              reservedSize: 40,
+            ),
+          ),
+        ),
+        borderData: FlBorderData(
+          show: true,
+          border: Border.all(color: const Color(0xff37434d), width: 1),
+        ),
+        minX: 0,
+        maxX: 8,
+        minY: 30,
+        maxY: 60,
+        lineBarsData: [
+          LineChartBarData(
+            spots: spots,
+            isCurved: true,
+            gradient: LinearGradient(
+              colors: [
+                AppTheme.primaryColor.withOpacity(0.8),
+                AppTheme.primaryColor,
+              ],
+            ),
+            barWidth: 3,
+            isStrokeCapRound: true,
+            dotData: const FlDotData(
+              show: true,
+            ),
+            belowBarData: BarAreaData(
+              show: true,
+              gradient: LinearGradient(
+                colors: [
+                  AppTheme.primaryColor.withOpacity(0.2),
+                  AppTheme.primaryColor.withOpacity(0.0),
+                ],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 주간 소음 추이 Bar Chart 위젯
+  Widget _buildWeeklyNoiseBarChart() {
+    return BarChart(
+      BarChartData(
+        barTouchData: BarTouchData(
+          touchTooltipData: BarTouchTooltipData(
+            tooltipBgColor: Colors.grey.shade200,
+            getTooltipItem: (group, groupIndex, rod, rodIndex) {
+              final day = ['월', '화', '수', '목', '금', '토', '일'][group.x.toInt()];
+              return BarTooltipItem(
+                '$day\n${rod.toY.toInt()}dB',
+                const TextStyle(
+                  color: AppTheme.textColor,
+                  fontWeight: FontWeight.bold,
+                ),
+              );
+            },
+          ),
+        ),
+        titlesData: FlTitlesData(
+          show: true,
+          rightTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          topTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              getTitlesWidget: (double value, TitleMeta meta) {
+                final style = TextStyle(
+                  color: AppTheme.textColor,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                );
+                String text;
+                switch (value.toInt()) {
+                  case 0:
+                    text = '월';
+                    break;
+                  case 1:
+                    text = '화';
+                    break;
+                  case 2:
+                    text = '수';
+                    break;
+                  case 3:
+                    text = '목';
+                    break;
+                  case 4:
+                    text = '금';
+                    break;
+                  case 5:
+                    text = '토';
+                    break;
+                  case 6:
+                    text = '일';
+                    break;
+                  default:
+                    text = '';
+                    break;
+                }
+                return SideTitleWidget(
+                  axisSide: meta.axisSide,
+                  child: Text(text, style: style),
+                );
+              },
+              reservedSize: 38,
+            ),
+          ),
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 30,
+              interval: 10,
+              getTitlesWidget: (value, meta) {
+                return Text(
+                  '${value.toInt()}',
+                  style: TextStyle(
+                    color: AppTheme.textColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 10,
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+        borderData: FlBorderData(
+          show: false,
+        ),
+        barGroups: [
+          BarChartGroupData(
+            x: 0,
+            barRods: [
+              BarChartRodData(
+                toY: 45,
+                gradient: _getBarGradient(45),
+                borderRadius: BorderRadius.circular(4),
+                width: 20,
+              )
+            ],
+            showingTooltipIndicators: [0],
+          ),
+          BarChartGroupData(
+            x: 1,
+            barRods: [
+              BarChartRodData(
+                toY: 38,
+                gradient: _getBarGradient(38),
+                borderRadius: BorderRadius.circular(4),
+                width: 20,
+              )
+            ],
+          ),
+          BarChartGroupData(
+            x: 2,
+            barRods: [
+              BarChartRodData(
+                toY: 52,
+                gradient: _getBarGradient(52),
+                borderRadius: BorderRadius.circular(4),
+                width: 20,
+              )
+            ],
+          ),
+          BarChartGroupData(
+            x: 3,
+            barRods: [
+              BarChartRodData(
+                toY: 41,
+                gradient: _getBarGradient(41),
+                borderRadius: BorderRadius.circular(4),
+                width: 20,
+              )
+            ],
+          ),
+          BarChartGroupData(
+            x: 4,
+            barRods: [
+              BarChartRodData(
+                toY: 47,
+                gradient: _getBarGradient(47),
+                borderRadius: BorderRadius.circular(4),
+                width: 20,
+              )
+            ],
+          ),
+          BarChartGroupData(
+            x: 5,
+            barRods: [
+              BarChartRodData(
+                toY: 35,
+                gradient: _getBarGradient(35),
+                borderRadius: BorderRadius.circular(4),
+                width: 20,
+              )
+            ],
+          ),
+          BarChartGroupData(
+            x: 6,
+            barRods: [
+              BarChartRodData(
+                toY: 30,
+                gradient: _getBarGradient(30),
+                borderRadius: BorderRadius.circular(4),
+                width: 20,
+              )
+            ],
+          ),
+        ],
+        gridData: const FlGridData(
+          show: true,
+          drawVerticalLine: false,
+          horizontalInterval: 10,
+        ),
+        alignment: BarChartAlignment.spaceAround,
+        maxY: 60,
+      ),
+    );
+  }
+
+  // 좌석별 소음 비율 Bar Chart 위젯
+  Widget _buildSeatNoiseBarChart() {
+    return BarChart(
+      BarChartData(
+        alignment: BarChartAlignment.spaceAround,
+        barTouchData: BarTouchData(
+          enabled: true,
+          touchTooltipData: BarTouchTooltipData(
+            tooltipBgColor: Colors.grey.shade200,
+            getTooltipItem: (group, groupIndex, rod, rodIndex) {
+              final seatList = ['A-1', 'A-2', 'B-1', 'B-2', '내 좌석'];
+              return BarTooltipItem(
+                '${seatList[group.x.toInt()]}\n${rod.toY.toInt()}%',
+                const TextStyle(
+                  color: AppTheme.textColor,
+                  fontWeight: FontWeight.bold,
+                ),
+              );
+            },
+          ),
+        ),
+        titlesData: FlTitlesData(
+          show: true,
+          rightTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          topTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              getTitlesWidget: (double value, TitleMeta meta) {
+                final style = TextStyle(
+                  color: value == 4 ? AppTheme.primaryColor : AppTheme.textColor,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 11,
+                );
+                String text;
+                switch (value.toInt()) {
+                  case 0:
+                    text = 'A-1';
+                    break;
+                  case 1:
+                    text = 'A-2';
+                    break;
+                  case 2:
+                    text = 'B-1';
+                    break;
+                  case 3:
+                    text = 'B-2';
+                    break;
+                  case 4:
+                    text = '내 좌석';
+                    break;
+                  default:
+                    text = '';
+                    break;
+                }
+                return SideTitleWidget(
+                  axisSide: meta.axisSide,
+                  child: Text(text, style: style),
+                );
+              },
+              reservedSize: 25,
+            ),
+          ),
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 30,
+              interval: 20,
+              getTitlesWidget: (value, meta) {
+                return Text(
+                  '${value.toInt()}%',
+                  style: TextStyle(
+                    color: AppTheme.textColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 10,
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+        borderData: FlBorderData(
+          show: false,
+        ),
+        barGroups: [
+          BarChartGroupData(
+            x: 0,
+            barRods: [
+              BarChartRodData(
+                toY: 72,
+                color: AppTheme.textColor.withOpacity(0.7),
+                borderRadius: BorderRadius.circular(4),
+                width: 20,
+              )
+            ],
+          ),
+          BarChartGroupData(
+            x: 1,
+            barRods: [
+              BarChartRodData(
+                toY: 65,
+                color: AppTheme.textColor.withOpacity(0.7),
+                borderRadius: BorderRadius.circular(4),
+                width: 20,
+              )
+            ],
+          ),
+          BarChartGroupData(
+            x: 2,
+            barRods: [
+              BarChartRodData(
+                toY: 85,
+                color: AppTheme.textColor.withOpacity(0.7),
+                borderRadius: BorderRadius.circular(4),
+                width: 20,
+              )
+            ],
+          ),
+          BarChartGroupData(
+            x: 3,
+            barRods: [
+              BarChartRodData(
+                toY: 70,
+                color: AppTheme.textColor.withOpacity(0.7),
+                borderRadius: BorderRadius.circular(4),
+                width: 20,
+              )
+            ],
+          ),
+          BarChartGroupData(
+            x: 4,
+            barRods: [
+              BarChartRodData(
+                toY: 82,
+                color: AppTheme.primaryColor,
+                borderRadius: BorderRadius.circular(4),
+                width: 20,
+              )
+            ],
+            showingTooltipIndicators: [0],
+          ),
+        ],
+        gridData: const FlGridData(
+          show: true,
+          drawVerticalLine: false,
+          horizontalInterval: 20,
+        ),
+        maxY: 100,
+      ),
+    );
+  }
+
+  // 바 차트에 사용되는 그라데이션 생성
+  LinearGradient _getBarGradient(double value) {
+    Color color;
+    if (value < 40) {
+      color = AppTheme.quietColor;  // 조용
+    } else if (value < 50) {
+      color = AppTheme.primaryColor;  // 양호
+    } else {
+      color = AppTheme.warningColor;  // 주의
+    }
+    
+    return LinearGradient(
+      colors: [
+        color.withOpacity(0.7),
+        color,
+      ],
+      begin: Alignment.bottomCenter,
+      end: Alignment.topCenter,
+    );
   }
 }
 
