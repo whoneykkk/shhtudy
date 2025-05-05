@@ -1,6 +1,7 @@
 package com.shhtudy.backend.controller;
 
 import com.shhtudy.backend.dto.SignUpRequestDto;
+import com.shhtudy.backend.global.response.ApiResponse;
 import com.shhtudy.backend.service.FirebaseAuthService;
 import com.shhtudy.backend.service.UserService;
 import jakarta.validation.Valid;
@@ -17,7 +18,7 @@ public class UserController {
     private final FirebaseAuthService firebaseAuthService;
 
     @PostMapping
-    public ResponseEntity<String> signUp(@RequestBody @Valid SignUpRequestDto request,
+    public ResponseEntity<ApiResponse<String>> signUp(@RequestBody @Valid SignUpRequestDto request,
                                          @RequestHeader("Authorization") String authorizationHeader) {
         // FirebaseAuthService에서 토큰 검증
         String idToken = authorizationHeader.replace("Bearer ", "");
@@ -26,7 +27,8 @@ public class UserController {
         // 회원가입 로직 실행
         userService.signUp(request, firebaseUid);
 
-        return ResponseEntity.ok("회원가입 완료!");
-
+        return ResponseEntity.ok(
+                new ApiResponse<>(true, "회원가입 완료!", null)
+        );
     }
 }

@@ -28,8 +28,11 @@ public class User {
     private int remainingTime = 0;
 
     private int mannerScore = 0;
+    
+    private int points = 0; // 사용자 포인트 (기본값 0)
 
     @Enumerated(EnumType.STRING)     // enum 값을 문자열로 저장
+    @Column(columnDefinition = "VARCHAR(10)")  // 명시적으로 컬럼 타입과 길이 지정
     private Grade grade = Grade.GOOD;
 
     public enum Grade {
@@ -40,6 +43,6 @@ public class User {
     @JoinColumn(name = "current_seat_id") // users 테이블에 foreign key 생성
     private Seat currentSeat;
 
-    private int averageDecibel; //TODO: noise 엔티티 생성 시 추가
-    private int noiseOccurrence;//TODO: noise 엔티티 생성 시 추가
+    private int averageDecibel = 0; //TODO: noise 엔티티 생성 시 추가
+    private int noiseOccurrence = 0;//TODO: noise 엔티티 생성 시 추가
 }
