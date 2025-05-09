@@ -12,6 +12,9 @@ public class SignUpRequestDto {
     @NotBlank(message = "이름은 필수입니다.")
     private String name;
 
+    @Size(min=2, message = "닉네임은 필수입니다.")
+    private String nickname;
+
     @NotBlank(message = "전화번호는 필수입니다.")
     private String phoneNumber;
 

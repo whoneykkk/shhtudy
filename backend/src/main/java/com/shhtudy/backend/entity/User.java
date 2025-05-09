@@ -17,6 +17,9 @@ public class User {
 
     private String name;
 
+    @Column(name = "nickname", nullable = false, unique = true)
+    private String nickname;
+
     @Column(unique = true)
     private String phoneNumber;
 
@@ -27,9 +30,7 @@ public class User {
 
     private int remainingTime = 0;
 
-    private int mannerScore = 0;
-    
-    private int points = 0; // 사용자 포인트 (기본값 0)
+    private int mannerScore = 150;
 
     @Enumerated(EnumType.STRING)     // enum 값을 문자열로 저장
     @Column(columnDefinition = "VARCHAR(10)")  // 명시적으로 컬럼 타입과 길이 지정
