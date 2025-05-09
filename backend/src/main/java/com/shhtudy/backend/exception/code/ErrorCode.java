@@ -17,6 +17,7 @@ public enum ErrorCode {
     INVALID_PASSWORD(-1003, "비밀번호가 일치하지 않습니다.", HttpStatus.UNAUTHORIZED),
     INVALID_CREDENTIALS(-1004, "전화번호 또는 비밀번호가 올바르지 않습니다.", HttpStatus.UNAUTHORIZED),
     INVALID_FIREBASE_TOKEN(-1005, "유효하지 않은 Firebase 토큰입니다.", HttpStatus.UNAUTHORIZED),
+    DUPLICATE_NICKNAME(-1006,"이미 사용 중인 닉네임입니다.", HttpStatus.CONFLICT),
 
     //공지사항 관련 오류(-4000~-4999)
     NOTICE_NOT_FOUND(-4001,"해당 ID의 공지사항이 존재하지 않음", HttpStatus.NOT_FOUND),

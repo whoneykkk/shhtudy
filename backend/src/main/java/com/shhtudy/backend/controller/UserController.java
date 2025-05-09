@@ -4,6 +4,7 @@ import com.shhtudy.backend.dto.SignUpRequestDto;
 import com.shhtudy.backend.global.response.ApiResponse;
 import com.shhtudy.backend.service.FirebaseAuthService;
 import com.shhtudy.backend.service.UserService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/users")
+@SecurityRequirement(name = "FirebaseToken")
 
 public class UserController {
     private final UserService userService;
@@ -31,4 +33,12 @@ public class UserController {
                 new ApiResponse<>(true, "회원가입 완료!", null)
         );
     }
+
+    @GetMapping("/me")
+    public ApiResponse<String> getMyUid(@RequestHeader("Authorization") String authorizationHeader) {
+        String token = authorizationHeader.replace("Bearer ", "");
+        String uid = firebaseAuthService.verifyIdToken(token);
+        return ApiResponse.success(uid, "현재 로그인한 UID");
+    }
+
 }

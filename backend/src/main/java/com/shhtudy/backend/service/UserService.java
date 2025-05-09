@@ -37,6 +37,11 @@ public class UserService {
                 throw new CustomException(ErrorCode.DUPLICATE_USER);
             }
 
+            if (userRepository.existsByNickname(request.getNickname())) {
+                logger.warn("회원가입 실패 - 이미 존재하는 닉네임: {}", request.getNickname());
+                throw new CustomException(ErrorCode.DUPLICATE_NICKNAME);
+            }
+
             // 2. 비밀번호 일치 확인
             if (!request.getPassword().equals(request.getConfirmPassword())) {
                 logger.warn("회원가입 실패 - 비밀번호 불일치");
@@ -47,6 +52,7 @@ public class UserService {
             User user = new User();
             user.setFirebaseUid(firebaseUid);
             user.setName(request.getName());
+            user.setNickname(request.getNickname());
             user.setPhoneNumber(request.getPhoneNumber());
 
             // 4. 비밀번호 암호화 후 저장
