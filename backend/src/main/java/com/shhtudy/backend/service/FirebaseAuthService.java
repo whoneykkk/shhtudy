@@ -29,9 +29,21 @@ public class FirebaseAuthService {
                     throw new CustomException(ErrorCode.INVALID_FIREBASE_TOKEN);
                 }
                 
-                // 개발 모드에서는 항상 성공 처리하고 테스트용 사용자 ID 반환
-                String devUserId = "dev-user-" + System.currentTimeMillis();
-                System.out.println("개발 모드: 임시 사용자 ID 생성: " + devUserId);
+                // 토큰에서 전화번호 정보 추출 (Firebase 토큰 포맷에 따라 적절히 수정 필요)
+                String phoneHint = "";
+                try {
+                    // idToken을 . 기준으로 분리 (맨 처음 부분만 사용)
+                    String tokenFirstPart = idToken.split("\\.")[0].substring(0, 5);
+                    // 첫 5자리를 해시코드로 변환하여 전화번호 힌트로 사용
+                    int hashCode = Math.abs(tokenFirstPart.hashCode() % 900) + 100; // 100-999 사이의 값
+                    phoneHint = String.valueOf(hashCode);
+                } catch (Exception e) {
+                    phoneHint = "123"; // 기본값
+                }
+                
+                // 전화번호 힌트에 따라 다른 고정 ID 생성
+                String devUserId = "test-user-" + phoneHint;
+                System.out.println("개발 모드: 테스트 사용자 ID 생성: " + devUserId);
                 return devUserId;
             }
 
@@ -52,10 +64,10 @@ public class FirebaseAuthService {
             throw new CustomException(ErrorCode.INVALID_FIREBASE_TOKEN);
         } catch (Exception e) {
             if (!firebaseEnabled) {
-                // 개발 모드에서는 예외 발생 시에도 테스트용 ID 반환하도록 수정
-                String devUserId = "dev-user-error-" + System.currentTimeMillis();
+                // 개발 모드에서는 예외 발생 시에도 백업 ID 반환
+                String devUserId = "test-user-backup";
                 System.err.println("개발 모드 예외 발생: " + e.getMessage());
-                System.err.println("개발 모드에서 계속 진행하기 위해 임시 ID 생성: " + devUserId);
+                System.err.println("개발 모드에서 계속 진행하기 위해 백업 ID 사용: " + devUserId);
                 return devUserId;
             }
             

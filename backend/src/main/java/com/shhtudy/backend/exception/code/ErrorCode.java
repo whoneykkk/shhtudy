@@ -13,6 +13,7 @@ public enum ErrorCode {
 
     // 사용자/계정 관련 오류 (-1000 ~ -1999)
     DUPLICATE_USER(-1001, "이미 가입된 사용자입니다.", HttpStatus.CONFLICT),
+    DUPLICATE_USERID(-1006, "이미 사용 중인 아이디입니다.", HttpStatus.CONFLICT),
     USER_NOT_FOUND(-1002, "존재하지 않는 사용자입니다.", HttpStatus.NOT_FOUND),
     INVALID_PASSWORD(-1003, "비밀번호가 일치하지 않습니다.", HttpStatus.UNAUTHORIZED),
     INVALID_CREDENTIALS(-1004, "전화번호 또는 비밀번호가 올바르지 않습니다.", HttpStatus.UNAUTHORIZED),

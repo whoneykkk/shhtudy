@@ -37,10 +37,13 @@ public class AuthService {
         response.setToken(token);
         response.setUserId(user.getFirebaseUid());
         response.setName(user.getName());
+        response.setUserAccountId(user.getUserId());
         response.setGrade(user.getGrade().name());
         response.setRemainingTime(user.getRemainingTime());
         response.setAverageDecibel(user.getAverageDecibel());
         response.setNoiseOccurrence(user.getNoiseOccurrence());
+        response.setMannerScore(user.getMannerScore());
+        response.setPoints(user.getPoints());
 
         // 현재 좌석 위치가 있으면 locationCode 추가
         if (user.getCurrentSeat() != null) {

@@ -5,17 +5,16 @@ import lombok.Setter;
 
 @Getter
 @Setter
-
-public class LoginResponseDto {
-    private String token;
+public class UserProfileResponseDto {
     private String userId;
     private String name;
     private String userAccountId;
     private String grade;
     private int remainingTime;
     private String currentSeat;
-    private int averageDecibel;
+    private double averageDecibel;
     private int noiseOccurrence;
     private int mannerScore;
     private int points;
-}
+    private String phoneNumber;
+} 

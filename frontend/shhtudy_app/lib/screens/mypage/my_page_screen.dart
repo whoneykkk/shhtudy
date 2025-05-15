@@ -3,6 +3,11 @@ import '../../theme/app_theme.dart';
 import '../auth/login_screen.dart';
 import 'notice_screen.dart';
 import 'message_screen.dart';
+import '../../models/user_profile.dart';
+import '../../services/user_service.dart';
+import 'dart:math' as math;
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 // 공지사항 모델 클래스
 class Notice {
@@ -143,6 +148,84 @@ class _MyPageScreenState extends State<MyPageScreen> {
   
   // 읽지 않은 쪽지 개수
   int get unreadMessageCount => MyPageScreen.tempMessages.where((message) => !message.isRead && !message.isSent).length;
+  
+  // 사용자 프로필 정보
+  UserProfile? userProfile;
+  bool isLoading = true;
+  
+  // 상세 정보 표시 여부
+  bool _showDetailStats = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserProfile();
+  }
+
+  // 사용자 프로필 정보 불러오기
+  Future<void> _loadUserProfile() async {
+    setState(() {
+      isLoading = true;
+    });
+
+    try {
+      // 서버에서 최신 프로필 정보 가져오기
+      final profile = await UserService.getUserProfile();
+      
+      if (!mounted) return; // 위젯이 아직 유효한지 확인
+      
+      if (profile != null) {
+        setState(() {
+          userProfile = profile;
+          isLoading = false;
+        });
+      } else {
+        // 서버에서 프로필을 가져오지 못한 경우
+        setState(() {
+          isLoading = false;
+        });
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('세션이 만료되었습니다. 다시 로그인해주세요.'),
+            duration: Duration(seconds: 3),
+          ),
+        );
+        
+        // 로그인 화면으로 이동
+        Future.delayed(const Duration(seconds: 1), () {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (context) => const LoginScreen()),
+            (route) => false,
+          );
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      
+      print('프로필 로딩 오류: $e');
+      setState(() {
+        isLoading = false;
+      });
+      
+      // 오류 발생 시 로그인 화면으로 이동
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('사용자 정보를 찾을 수 없습니다. 다시 로그인해주세요.'),
+          duration: Duration(seconds: 3),
+        ),
+      );
+      
+      Future.delayed(const Duration(seconds: 1), () {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
+          (route) => false,
+        );
+      });
+    }
+  }
 
   void _showLogoutDialog(BuildContext context) {
     showDialog(
@@ -164,13 +247,45 @@ class _MyPageScreenState extends State<MyPageScreen> {
             ),
           ),
           ElevatedButton(
-            onPressed: () {
-              // TODO: 로그아웃 API 호출
+            onPressed: () async {
+              // 로딩 상태 표시
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (context) => const Center(
+                  child: CircularProgressIndicator(),
+                ),
+              );
+              
+              try {
+                // Firebase 로그아웃
+                await FirebaseAuth.instance.signOut();
+                
+                // 서버측 로그아웃 처리
+                await UserService.logout();
+                
+                // 자동 로그인 설정 제거
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.setBool('auto_login', false);
+                
+                // 로딩 다이얼로그 닫기
+                Navigator.pop(context);
+                
+                // 로그인 화면으로 이동
               Navigator.pushAndRemoveUntil(
                 context,
                 MaterialPageRoute(builder: (context) => const LoginScreen()),
                 (route) => false,
               );
+              } catch (e) {
+                // 로딩 다이얼로그 닫기
+                Navigator.pop(context);
+                
+                // 에러 메시지 표시
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('로그아웃 중 오류가 발생했습니다: $e')),
+                );
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.primaryColor,
@@ -441,6 +556,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       fontWeight: FontWeight.w800,
                     ),
                   ),
+                  const Spacer(),
                 ],
               ),
             ),
@@ -449,6 +565,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
               child: SingleChildScrollView(
                 child: Column(
                   children: [
+                    const SizedBox(height: 16),
                     // 내 정보 섹션
                     Container(
                       margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -479,38 +596,332 @@ class _MyPageScreenState extends State<MyPageScreen> {
                               ],
                             ),
                           ),
+                          if (isLoading)
+                            const Padding(
+                              padding: EdgeInsets.all(32.0),
+                              child: Center(child: CircularProgressIndicator()),
+                            )
+                          else
+                            Column(
+                              children: [
+                                // 사용자 기본 정보 카드
                           Container(
                             width: double.infinity,
-                            padding: const EdgeInsets.all(16),
-                            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 1),
+                                  padding: const EdgeInsets.all(24),
+                                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
                             decoration: BoxDecoration(
                               color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
+                                    borderRadius: BorderRadius.circular(16),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.03),
+                                        blurRadius: 10,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
                             ),
                             child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
+                                      // 이름과 등급
                                 Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    const Text('이름: '),
-                                    const Text('홍길동'),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                Row(
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                            decoration: BoxDecoration(
+                                              color: _getGradeColor(userProfile?.grade),
+                                              borderRadius: BorderRadius.circular(12),
+                                            ),
+                                            child: Text(
+                                              _getGradeText(userProfile?.grade),
+                                              style: const TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Text(
+                                            userProfile?.userAccountId ?? '--',
+                                            style: const TextStyle(
+                                              fontSize: 24,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      
+                                      const SizedBox(height: 16),
+                                      // 구분선
+                                      Divider(
+                                        color: Colors.grey.withOpacity(0.2),
+                                        thickness: 1,
+                                      ),
+                                      const SizedBox(height: 16),
+                                      
+                                      // 이름 정보
+                                      Row(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Text('전화번호: '),
-                                    const Text('010-1234-5678'),
-                                  ],
+                                          Container(
+                                            padding: const EdgeInsets.all(8),
+                                            decoration: BoxDecoration(
+                                              color: AppTheme.primaryColor.withOpacity(0.1),
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: Icon(
+                                              Icons.badge,
+                                              color: AppTheme.primaryColor,
+                                              size: 18,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Text(
+                                            '이름: ',
+                                            style: TextStyle(
+                                              fontSize: 15,
+                                              color: AppTheme.textColor.withOpacity(0.7),
+                                            ),
+                                          ),
+                                          Text(
+                                            userProfile?.name ?? '--',
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                              color: AppTheme.textColor,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      
+                                      const SizedBox(height: 16),
+                                      
+                                      // 전화번호 정보
+                                      Row(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.all(8),
+                                            decoration: BoxDecoration(
+                                              color: AppTheme.primaryColor.withOpacity(0.1),
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: Icon(
+                                              Icons.phone,
+                                              color: AppTheme.primaryColor,
+                                              size: 18,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Text(
+                                            '전화번호: ',
+                                            style: TextStyle(
+                                              fontSize: 15,
+                                              color: AppTheme.textColor.withOpacity(0.7),
+                                            ),
+                                          ),
+                                          Text(
+                                            userProfile?.phoneNumber ?? '--',
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                              color: AppTheme.textColor,
+                                            ),
                                 ),
                               ],
                             ),
-                          ),
+                                      
+                                      const SizedBox(height: 16),
+                                      
+                                      // 포인트 정보
+                                      Row(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.all(8),
+                                            decoration: BoxDecoration(
+                                              color: AppTheme.primaryColor.withOpacity(0.1),
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: Icon(
+                                              Icons.card_giftcard,
+                                              color: AppTheme.primaryColor,
+                                              size: 18,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Text(
+                                            '포인트: ',
+                                            style: TextStyle(
+                                              fontSize: 15,
+                                              color: AppTheme.textColor.withOpacity(0.7),
+                                            ),
+                                          ),
+                                          Text(
+                                            '${userProfile?.points ?? 0} P',
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                              color: AppTheme.primaryColor,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            '(${_getPointsStatusText(userProfile?.grade, userProfile?.points ?? 0)})',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              color: AppTheme.textColor.withOpacity(0.6),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      
+                                      // 현재 좌석 정보 (있을 경우)
+                                      if (userProfile?.currentSeat != null) ...[
                           const SizedBox(height: 16),
+                                        Row(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.all(8),
+                                              decoration: BoxDecoration(
+                                                color: AppTheme.primaryColor.withOpacity(0.1),
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: Icon(
+                                                Icons.chair_outlined,
+                                                color: AppTheme.primaryColor,
+                                                size: 18,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 12),
+                                            Text(
+                                              '현재 좌석: ',
+                                              style: TextStyle(
+                                                fontSize: 15,
+                                                color: AppTheme.textColor.withOpacity(0.7),
+                                              ),
+                                            ),
+                                            Text(
+                                              userProfile?.currentSeat ?? '--',
+                                              style: TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.bold,
+                                                color: AppTheme.textColor,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                                
+                                // 상세 정보 보기 버튼
+                                Container(
+                                  width: double.infinity,
+                                  margin: const EdgeInsets.only(top: 0, left: 16, right: 16, bottom: 16),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.accentColor,
+                                    borderRadius: BorderRadius.vertical(bottom: Radius.circular(12)),
+                                  ),
+                                  child: Material(
+                                    color: Colors.transparent,
+                                    child: InkWell(
+                                      onTap: () {
+                                        setState(() {
+                                          _showDetailStats = !_showDetailStats;
+                                        });
+                                      },
+                                      borderRadius: BorderRadius.vertical(bottom: Radius.circular(12)),
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(vertical: 12.0),
+                                        child: Center(
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Text(
+                                                _showDetailStats ? '상세 정보 접기' : '상세 정보 보기',
+                                                style: TextStyle(
+                                                  color: AppTheme.primaryColor,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 15,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Icon(
+                                                _showDetailStats ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                                                color: AppTheme.primaryColor,
+                                                size: 20,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                
+                                const SizedBox(height: 0),
+                                
+                                // 주요 통계 그리드 (2x2) - 접기/펼치기 기능 적용
+                                if (_showDetailStats) ...[
+                                  Container(
+                                    margin: const EdgeInsets.symmetric(horizontal: 16),
+                                    child: GridView.count(
+                                      crossAxisCount: 2,
+                                      shrinkWrap: true,
+                                      physics: const NeverScrollableScrollPhysics(),
+                                      mainAxisSpacing: 12,
+                                      crossAxisSpacing: 12,
+                                      childAspectRatio: 1.5,
+                                      children: [
+                                        // 남은 시간 카드
+                                        _buildStatCardGridItem(
+                                          icon: Icons.timer,
+                                          title: '남은 시간',
+                                          value: _formatRemainingTime(userProfile?.remainingTime ?? 0),
+                                          iconColor: AppTheme.primaryColor,
+                                        ),
+                                        // 매너 점수 카드
+                                        _buildStatCardGridItem(
+                                          icon: Icons.mood,
+                                          title: '매너 점수',
+                                          value: '${userProfile?.mannerScore ?? 0}점',
+                                          iconColor: Colors.amber,
+                                        ),
+                                        // 평균 데시벨 카드
+                                        _buildStatCardGridItem(
+                                          icon: Icons.volume_up,
+                                          title: '평균 데시벨',
+                                          value: '${userProfile?.averageDecibel != null ? userProfile!.averageDecibel.toString() : 0}dB',
+                                          iconColor: AppTheme.normalColor,
+                                        ),
+                                        // 소음 발생 카드
+                                        _buildStatCardGridItem(
+                                          icon: Icons.notifications_active,
+                                          title: '소음 발생',
+                                          value: '${userProfile?.noiseOccurrence ?? 0}회',
+                                          iconColor: userProfile?.noiseOccurrence != null && userProfile!.noiseOccurrence > 5 
+                                              ? AppTheme.warningColor 
+                                              : AppTheme.quietColor,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                                
+                    const SizedBox(height: 16),
+                              ],
+                            ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    
+                    const SizedBox(height: 24),
+                    
                     // 공지사항 섹션
                     Container(
                       margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -610,7 +1021,9 @@ class _MyPageScreenState extends State<MyPageScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    
+                    const SizedBox(height: 24),
+                    
                     // 쪽지 섹션
                     Container(
                       margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -771,5 +1184,193 @@ class _MyPageScreenState extends State<MyPageScreen> {
         ),
       ),
     );
+  }
+
+  // 통계 카드 위젯 생성 메서드
+  Widget _buildStatCard({required IconData icon, required String title, required String value, required Color iconColor}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                icon,
+                size: 18,
+                color: iconColor,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppTheme.textColor.withOpacity(0.6),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.textColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 통계 카드 그리드 아이템 (새로운 디자인)
+  Widget _buildStatCardGridItem({required IconData icon, required String title, required String value, required Color iconColor}) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 10,
+            spreadRadius: 0,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: iconColor.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              icon,
+              size: 20,
+              color: iconColor,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 12,
+              color: AppTheme.textColor.withOpacity(0.7),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 등급에 따른 컬러 반환
+  Color _getGradeColor(String? grade) {
+    if (grade == null) return AppTheme.normalColor;
+    
+    switch (grade.toUpperCase()) {
+      case 'WARNING':
+        return AppTheme.warningColor;
+      case 'SILENT':
+        return AppTheme.quietColor;
+      case 'GOOD':
+      default:
+        return AppTheme.normalColor;
+    }
+  }
+
+  // 등급 표시 텍스트 반환
+  String _getGradeText(String? grade) {
+    if (grade == null) return 'B';
+    
+    switch (grade.toUpperCase()) {
+      case 'WARNING':
+        return 'C';
+      case 'SILENT':
+        return 'A';
+      case 'GOOD':
+        return 'B';
+      default:
+        return grade;
+    }
+  }
+
+  // 남은 시간 포맷팅
+  String _formatRemainingTime(int seconds) {
+    final hours = seconds ~/ 3600;
+    final minutes = (seconds % 3600) ~/ 60;
+    
+    return '${hours}시간 ${minutes}분';
+  }
+
+  // 승급까지 남은 포인트 계산
+  String _getPointsToNextGrade(String? grade) {
+    if (grade == null) return '0 P';
+    
+    final userPoints = userProfile?.points ?? 0;
+    
+    switch (grade.toUpperCase()) {
+      case 'WARNING': // C등급
+        final remainingPoints = 300 - userPoints;
+        return remainingPoints <= 0 ? '승급 가능' : '$remainingPoints P';
+      case 'GOOD': // B등급
+        final remainingPoints = 700 - userPoints;
+        return remainingPoints <= 0 ? '승급 가능' : '$remainingPoints P';
+      case 'SILENT': // A등급 (최고 등급)
+        final remainingPoints = 1000 - userPoints;
+        return remainingPoints <= 0 ? '최고 등급' : '$remainingPoints P';
+      default:
+        return '0 P';
+    }
+  }
+  
+  // 포인트 상태 텍스트 (진행 상황 포함)
+  String _getPointsStatusText(String? grade, int points) {
+    if (grade == null) return '';
+    
+    switch (grade.toUpperCase()) {
+      case 'WARNING': // C등급
+        final nextThreshold = 300;
+        if (points >= nextThreshold) {
+          return '다음 등급(B)으로 자동 승급 예정';
+        } else {
+          final percentage = ((points / nextThreshold) * 100).round();
+          return 'B등급까지 ${nextThreshold - points}P 남음 ($percentage%)';
+        }
+      case 'GOOD': // B등급
+        final nextThreshold = 700;
+        if (points >= nextThreshold) {
+          return '다음 등급(A)으로 자동 승급 예정';
+        } else {
+          final percentage = (((points - 300) / (nextThreshold - 300)) * 100).round();
+          return 'A등급까지 ${nextThreshold - points}P 남음 ($percentage%)';
+        }
+      case 'SILENT': // A등급 (최고 등급)
+        final maxThreshold = 1000;
+        if (points >= maxThreshold) {
+          return '최고 등급 달성 (100%)';
+        } else {
+          final percentage = (((points - 700) / (maxThreshold - 700)) * 100).round();
+          return '최고 등급 달성 ($percentage%)';
+        }
+      default:
+        return '';
+    }
   }
 } 
