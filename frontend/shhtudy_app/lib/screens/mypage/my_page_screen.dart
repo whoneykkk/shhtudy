@@ -729,9 +729,9 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                               fontWeight: FontWeight.bold,
                                               color: AppTheme.textColor,
                                             ),
-                                ),
-                              ],
-                            ),
+                                          ),
+                                        ],
+                                      ),
                                       
                                       const SizedBox(height: 16),
                                       
@@ -752,28 +752,25 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                             ),
                                           ),
                                           const SizedBox(width: 12),
-                                          Text(
-                                            '포인트: ',
-                                            style: TextStyle(
-                                              fontSize: 15,
-                                              color: AppTheme.textColor.withOpacity(0.7),
-                                            ),
-                                          ),
-                                          Text(
-                                            '${userProfile?.points ?? 0} P',
-                                            style: TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold,
-                                              color: AppTheme.primaryColor,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            '(${_getPointsStatusText(userProfile?.grade, userProfile?.points ?? 0)})',
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              color: AppTheme.textColor.withOpacity(0.6),
-                                            ),
+                                          Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                '포인트: ${userProfile?.points ?? 0} P',
+                                                style: TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: AppTheme.primaryColor,
+                                                ),
+                                              ),
+                                              Text(
+                                                '(${_getPointsStatusText(userProfile?.grade, userProfile?.points ?? 0)})',
+                                                style: TextStyle(
+                                                  fontSize: 14,
+                                                  color: AppTheme.textColor.withOpacity(0.6),
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ],
                                       ),
@@ -868,45 +865,54 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                 
                                 // 주요 통계 그리드 (2x2) - 접기/펼치기 기능 적용
                                 if (_showDetailStats) ...[
-                                  Container(
-                                    margin: const EdgeInsets.symmetric(horizontal: 16),
-                                    child: GridView.count(
-                                      crossAxisCount: 2,
-                                      shrinkWrap: true,
-                                      physics: const NeverScrollableScrollPhysics(),
-                                      mainAxisSpacing: 12,
-                                      crossAxisSpacing: 12,
-                                      childAspectRatio: 1.5,
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                                    child: Column(
                                       children: [
-                                        // 남은 시간 카드
-                                        _buildStatCardGridItem(
-                                          icon: Icons.timer,
-                                          title: '남은 시간',
-                                          value: _formatRemainingTime(userProfile?.remainingTime ?? 0),
-                                          iconColor: AppTheme.primaryColor,
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: _buildStatCardGridItem(
+                                                icon: Icons.timer,
+                                                title: '남은 시간',
+                                                value: _formatRemainingTime(userProfile?.remainingTime ?? 0),
+                                                iconColor: AppTheme.primaryColor,
+                                              ),
+                                            ),
+                                            SizedBox(width: 12),
+                                            Expanded(
+                                              child: _buildStatCardGridItem(
+                                                icon: Icons.mood,
+                                                title: '매너 점수',
+                                                value: '${userProfile?.mannerScore ?? 0}점',
+                                                iconColor: Colors.amber,
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                        // 매너 점수 카드
-                                        _buildStatCardGridItem(
-                                          icon: Icons.mood,
-                                          title: '매너 점수',
-                                          value: '${userProfile?.mannerScore ?? 0}점',
-                                          iconColor: Colors.amber,
-                                        ),
-                                        // 평균 데시벨 카드
-                                        _buildStatCardGridItem(
-                                          icon: Icons.volume_up,
-                                          title: '평균 데시벨',
-                                          value: '${userProfile?.averageDecibel != null ? userProfile!.averageDecibel.toString() : 0}dB',
-                                          iconColor: AppTheme.normalColor,
-                                        ),
-                                        // 소음 발생 카드
-                                        _buildStatCardGridItem(
-                                          icon: Icons.notifications_active,
-                                          title: '소음 발생',
-                                          value: '${userProfile?.noiseOccurrence ?? 0}회',
-                                          iconColor: userProfile?.noiseOccurrence != null && userProfile!.noiseOccurrence > 5 
-                                              ? AppTheme.warningColor 
-                                              : AppTheme.quietColor,
+                                        SizedBox(height: 12),
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: _buildStatCardGridItem(
+                                                icon: Icons.volume_up,
+                                                title: '평균 데시벨',
+                                                value: '${userProfile?.averageDecibel != null ? userProfile!.averageDecibel.toString() : 0}dB',
+                                                iconColor: AppTheme.normalColor,
+                                              ),
+                                            ),
+                                            SizedBox(width: 12),
+                                            Expanded(
+                                              child: _buildStatCardGridItem(
+                                                icon: Icons.notifications_active,
+                                                title: '소음 발생',
+                                                value: '${userProfile?.noiseOccurrence ?? 0}회',
+                                                iconColor: userProfile?.noiseOccurrence != null && userProfile!.noiseOccurrence > 5 
+                                                    ? AppTheme.warningColor 
+                                                    : AppTheme.quietColor,
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ],
                                     ),

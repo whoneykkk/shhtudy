@@ -372,13 +372,13 @@ class _HomeScreenState extends State<HomeScreen> {
                         ? const CircularProgressIndicator()
                         : Text(
                             formatRemainingTime(userProfile?.remainingTime),
-                            style: TextStyle(
-                              fontSize: 36,
-                              fontWeight: FontWeight.w700,
-                              color: AppTheme.textColor,
-                              letterSpacing: 2,
-                            ),
-                          ),
+                        style: TextStyle(
+                          fontSize: 36,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.textColor,
+                          letterSpacing: 2,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -443,13 +443,13 @@ class _HomeScreenState extends State<HomeScreen> {
                                 )
                               : Text(
                                   '${currentRealtimeDecibel ?? "--"}DB',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 28,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 1,
-                                  ),
-                                ),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 28,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 1,
+                            ),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 32),
@@ -505,12 +505,12 @@ class _HomeScreenState extends State<HomeScreen> {
                                   )
                                 : Text(
                                     (userProfile?.mannerScore ?? 0).toString().padLeft(2, '0'),
-                                    style: TextStyle(
-                                      fontSize: 40,
-                                      fontWeight: FontWeight.w700,
-                                      color: AppTheme.primaryColor,
-                                    ),
-                                  ),
+                                style: TextStyle(
+                                  fontSize: 40,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppTheme.primaryColor,
+                                ),
+                              ),
                               const SizedBox(width: 8),
                               Container(
                                 width: 28,

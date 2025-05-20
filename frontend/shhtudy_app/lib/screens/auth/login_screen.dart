@@ -240,15 +240,15 @@ class _LoginScreenState extends State<LoginScreen> {
         isLoading = false;
       });
       
-<<<<<<< HEAD
       print('예상치 못한 오류: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('로그인 중 오류가 발생했습니다: $e')),
       );
-      // 사용자에게 보여줄 오류 메시지 결정
-      String errorMessage = '네트워크 오류가 발생했습니다. 다시 시도해주세요.';
-      if (e is TimeoutException) {
-        errorMessage = '서버 응답 시간이 초과되었습니다. 나중에 다시 시도해주세요.';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       body: SafeArea(
