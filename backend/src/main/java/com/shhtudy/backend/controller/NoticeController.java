@@ -4,6 +4,7 @@ import com.shhtudy.backend.dto.NoticeResponseDto;
 import com.shhtudy.backend.global.response.ApiResponse;
 import com.shhtudy.backend.service.FirebaseAuthService;
 import com.shhtudy.backend.service.NoticeService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -13,6 +14,7 @@ import java.util.List;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/notices")
+@Tag(name = "Notice", description = "공지 관련 API")
 
 public class NoticeController {
     private final NoticeService noticeService;

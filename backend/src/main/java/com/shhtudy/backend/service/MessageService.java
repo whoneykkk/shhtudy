@@ -1,6 +1,7 @@
 package com.shhtudy.backend.service;
 
 import com.shhtudy.backend.dto.MessageListResponseDto;
+import com.shhtudy.backend.dto.MessageSendRequestDto;
 import com.shhtudy.backend.entity.Message;
 import com.shhtudy.backend.entity.Seat;
 import com.shhtudy.backend.entity.User;
@@ -13,8 +14,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-
 @Service
 @RequiredArgsConstructor
 public class MessageService {
@@ -22,6 +21,7 @@ public class MessageService {
     private final UserRepository userRepository;
 
     public Page<MessageListResponseDto> getMessageList(String firebaseUid, String type, Pageable pageable) {
+
         Page<Message> messages = switch (type) {
             case "received" -> messageRepository.findByReceiverId(firebaseUid, pageable);
             case "sent"     -> messageRepository.findBySenderId(firebaseUid, pageable);
@@ -45,5 +45,20 @@ public class MessageService {
             return MessageListResponseDto.from(message, displayName, isSentByMe);
         });
     }
+    public void sendMessageToSeat(Integer seatId, MessageSendRequestDto request, String senderUid) {
 
+        User receiver = userRepository.findByCurrentSeat_SeatId(seatId)
+                .orElseThrow(() -> new CustomException(ErrorCode.NO_USER_IN_SEAT));
+
+        if (!userRepository.existsByFirebaseUid(senderUid)) {
+            throw new CustomException(ErrorCode.SENDER_NOT_FOUND);
+        }
+
+        Message message = new Message();
+        message.setSenderId(senderUid);
+        message.setReceiverId(receiver.getFirebaseUid());
+        message.setContent(request.getContent());
+
+        messageRepository.save(message);
+    }
 }

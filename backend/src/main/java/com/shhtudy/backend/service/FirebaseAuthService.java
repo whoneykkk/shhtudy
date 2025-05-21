@@ -30,8 +30,8 @@ public class FirebaseAuthService {
                 }
                 
                 // 개발 모드에서는 항상 성공 처리하고 테스트용 사용자 ID 반환
-                String devUserId = "dev-user-" + System.currentTimeMillis();
-                //String devUserId = "dev-user";
+                //String devUserId = "dev-user-" + System.currentTimeMillis();
+                String devUserId = "dev-user"; //TODO: 나중에 주석 삭제
                 System.out.println("개발 모드: 임시 사용자 ID 생성: " + devUserId);
                 return devUserId;
             }
