@@ -1,7 +1,6 @@
 package com.shhtudy.backend.service;
 
 import com.shhtudy.backend.dto.AlertStatusResponseDto;
-import com.shhtudy.backend.repository.MessageRepository;
 import com.shhtudy.backend.repository.NoticeReadRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -11,14 +10,12 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class AlertService {
-
-    private final MessageRepository messageRepository;
     private final NoticeReadRepository noticeReadRepository;
 
-    public AlertStatusResponseDto getHasUnreadNotifications(String userId) {
+    public AlertStatusResponseDto getHasUnreadNotifications(String firebaseUid) {
         // 메시지 기능 구현 전 임시 코드
         boolean hasUnreadMessages = false; // messageRepository.existsByReceiverIdAndIsReadFalse(userId);
-        boolean hasUnreadNotices = noticeReadRepository.existsUnreadNotices(userId);
+        boolean hasUnreadNotices = noticeReadRepository.existsUnreadNotices(firebaseUid);
 
         AlertStatusResponseDto response = new AlertStatusResponseDto();
         response.setHasUnreadMessages(hasUnreadMessages || hasUnreadNotices);

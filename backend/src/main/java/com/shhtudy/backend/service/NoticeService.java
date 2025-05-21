@@ -26,8 +26,8 @@ public class NoticeService {
     private final UserRepository userRepository;
 
     @Transactional(readOnly=true)
-    public List<NoticeResponseDto> getNoticeWithRaeadStatus(String userId) {
-        User user = userRepository.findById(userId).
+    public List<NoticeResponseDto> getNoticeWithRaeadStatus(String firebaseUid) {
+        User user = userRepository.findById(firebaseUid).
                 orElseThrow(()-> new CustomException(ErrorCode.USER_NOT_FOUND));
 
         List<Notice> notices = noticeRepository.findAllByOrderByCreatedAtDesc();
@@ -48,9 +48,9 @@ public class NoticeService {
     }
 
     @Transactional
-    public void markAsRead(String userId, Long noticeId) {
+    public void markAsRead(String firebaseUid, Long noticeId) {
         // 1. 사용자 조회
-        User user = userRepository.findById(userId)
+        User user = userRepository.findById(firebaseUid)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
         // 2. 공지사항 존재 여부 확인
