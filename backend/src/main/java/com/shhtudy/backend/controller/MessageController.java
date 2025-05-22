@@ -79,16 +79,16 @@ public class MessageController {
         return ResponseEntity.ok(ApiResponse.success(count, "조회 성공"));
     }
 
-/*
-    @Operation(summary = "쪽지 삭제", description = "특정 쪽지를 삭제합니다.")
-    @DeleteMapping("/{messagesId}")
+    @Operation(summary = "쪽지 삭제", description = "자신이 받은 또는 보낸 쪽지를 삭제합니다. 양측 모두 삭제 시 실제 삭제됩니다.")
+    @DeleteMapping("/{messageId}")
     public ResponseEntity<ApiResponse<String>> deleteMessage(
             @RequestHeader("Authorization") String authorizationHeader,
-            @PathVariable Long messagesId
+            @PathVariable Long messageId
     ) {
-        String idToken = authorizationHeader.replace("Bearer ", "");
-        String firebaseUid = firebaseAuthService.verifyIdToken(idToken);
+        String firebaseUid = firebaseAuthService.verifyIdToken(authorizationHeader.replace("Bearer ", ""));
+        messageService.deleteMessage(firebaseUid, messageId);
+        return ResponseEntity.ok(ApiResponse.success(null, "삭제 완료"));
     }
- */
+
 }
 
