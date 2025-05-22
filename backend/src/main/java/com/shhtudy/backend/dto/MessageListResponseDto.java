@@ -17,10 +17,10 @@ public class MessageListResponseDto {
     private String sentAt;
     private boolean isSentByMe;
 
-    public static MessageListResponseDto from(Message msg, String displayName, boolean isSentByMe) {
+    public static MessageListResponseDto from(Message msg, String counterpartDisplayName, boolean isSentByMe) {
         return new MessageListResponseDto(
                 msg.getMessageId(),
-                displayName,
+                counterpartDisplayName,
                 preview(msg.getContent()),
                 msg.isRead(),
                 formatDateTime(msg.getSentAt()),

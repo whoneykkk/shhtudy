@@ -32,7 +32,7 @@ public class SeatController {
         String idToken = authorizationHeader.replace("Bearer ", "");
         String firebaseUid = firebaseAuthService.verifyIdToken(idToken);
 
-        messageService.sendMessageToSeat(seatId, request, firebaseUid);
+        messageService.sendMessageToSeat(firebaseUid, seatId, request);
         return ResponseEntity.ok(new ApiResponse<>(true, "메시지 전송 완료", null));
     }
 

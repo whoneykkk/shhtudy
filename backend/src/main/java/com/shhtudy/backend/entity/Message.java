@@ -33,8 +33,8 @@ public class Message {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;  // 메세지 내용
 
-    @Column(nullable = false)
-    private boolean isRead = false;  // 읽음 여부 (기본값 false)
+    @Column(name = "is_read", nullable = false)
+    private boolean read = false;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime sentAt;
