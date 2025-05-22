@@ -19,7 +19,8 @@ public enum ErrorCode {
     INVALID_FIREBASE_TOKEN(-1005, "유효하지 않은 Firebase 토큰입니다.", HttpStatus.UNAUTHORIZED),
     DUPLICATE_NICKNAME(-1006,"이미 사용 중인 닉네임입니다.", HttpStatus.CONFLICT),
     SENDER_NOT_FOUND(-1007, "발신자 정보가 존재하지 않습니다.", HttpStatus.NOT_FOUND),
-    NO_USER_IN_SEAT(-1008,"현재 해당 좌석을 이용 중인 사용자가 없습니다." ,HttpStatus.NOT_FOUND),
+    RECEIVER_NOT_FOUND(-1008,"수신자 정보가 존재하지 않습니다.", HttpStatus.NOT_FOUND),
+    NO_USER_IN_SEAT(-1009,"현재 해당 좌석을 이용 중인 사용자가 없습니다." ,HttpStatus.NOT_FOUND),
 
     //메시지 관련 오류(-2000~-2999)
     MESSAGE_NOT_FOUND(-2001,"존재하지 않는 메시지 입니다." ,HttpStatus.NOT_FOUND ),
