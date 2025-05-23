@@ -4,21 +4,18 @@ import com.shhtudy.backend.dto.AlertStatusResponseDto;
 import com.shhtudy.backend.repository.MessageRepository;
 import com.shhtudy.backend.repository.NoticeReadRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
-// import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Service;
 
-// @Service 임시 주석 처리 (메시지 기능 구현 시 주석 해제 필요)
-@Component
+@Service
 @RequiredArgsConstructor
 public class AlertService {
-
-    private final MessageRepository messageRepository;
     private final NoticeReadRepository noticeReadRepository;
+    private final MessageRepository messageRepository;
 
-    public AlertStatusResponseDto getHasUnreadNotifications(String userId) {
-        // 메시지 기능 구현 전 임시 코드
-        boolean hasUnreadMessages = false; // messageRepository.existsByReceiverIdAndIsReadFalse(userId);
-        boolean hasUnreadNotices = noticeReadRepository.existsUnreadNotices(userId);
+    public AlertStatusResponseDto getHasUnreadNotifications(String firebaseUid) {
+        // 읽지 않은 메시지 확인
+        boolean hasUnreadMessages = messageRepository.countByReceiverIdAndReadFalse(firebaseUid) > 0;
+        boolean hasUnreadNotices = noticeReadRepository.existsUnreadNotices(firebaseUid);
 
         AlertStatusResponseDto response = new AlertStatusResponseDto();
         response.setHasUnreadMessages(hasUnreadMessages || hasUnreadNotices);

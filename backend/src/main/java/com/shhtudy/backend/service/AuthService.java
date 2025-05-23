@@ -37,7 +37,6 @@ public class AuthService {
         response.setToken(token);
         response.setUserId(user.getFirebaseUid());
         response.setName(user.getName());
-        response.setUserAccountId(user.getUserId());
         response.setGrade(user.getGrade().name());
         response.setRemainingTime(user.getRemainingTime());
         response.setAverageDecibel(user.getAverageDecibel());

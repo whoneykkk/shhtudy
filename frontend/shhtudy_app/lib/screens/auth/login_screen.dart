@@ -152,6 +152,7 @@ class _LoginScreenState extends State<LoginScreen> {
             await UserService.saveToken(userData['token']);
             await prefs.setString('firebase_token', firebaseToken);
             await prefs.setString('user_id', userData['userId']);
+            await prefs.setString('user_name', userData['name']);
             
             if (isAutoLogin) {
               await prefs.setBool('auto_login', true);

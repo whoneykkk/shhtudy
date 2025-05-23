@@ -50,190 +50,134 @@ class NoiseService {
     }
   }
 
-  // 내 좌석의 실시간 소음 레벨 가져오기 (아직 API 없어서 더미 데이터 반환)
-  static Future<int?> getCurrentNoiseLevel() async {
+  // 소음 세션 로그 조회 (API 명세서 기반)
+  static Future<List<Map<String, dynamic>>> getNoiseSessionLogs() async {
     try {
-      final userProfile = await UserService.getUserProfile();
-      
-      // 좌석이 없으면 null 반환
-      if (userProfile?.currentSeat == null) {
-        return null;
-      }
-      
-      // TODO: 실제 구현 시 외부 마이크 모듈 초기화 코드 추가
-      // 예시: await _initMicrophoneModule();
-      
-      // API 구현 시 주석 해제
-      /*
-      final token = await UserService.getAuthToken();
+      final token = await UserService.getToken();
       if (token == null) {
-        return null;
+        throw Exception('인증 토큰이 없습니다.');
       }
-      
+
       final response = await http.get(
-        Uri.parse('$baseUrl/noise/current'),
+        Uri.parse('$baseUrl/noise-logs'),
         headers: {
           'Authorization': 'Bearer $token',
         },
-      ).timeout(const Duration(seconds: 5));
-      
+      );
+
       if (response.statusCode == 200) {
-        final Map<String, dynamic> data = jsonDecode(response.body);
+        final Map<String, dynamic> data = json.decode(response.body);
         if (data['success'] == true && data['data'] != null) {
-          return data['data']['level'];
+          return List<Map<String, dynamic>>.from(data['data']);
         }
       }
       
-      print('실시간 소음 레벨 가져오기 실패: ${response.statusCode}, ${response.body}');
-      */
-      
-      // 임시로 랜덤한 소음 레벨 생성 (30~60 사이)
-      final DateTime now = DateTime.now();
-      // 시간에 따라 약간 변동하는 값 생성 (테스트용)
-      final int baseLevel = 40;
-      final int variation = (now.second % 10) - 5; // -5~+4 범위의 변동값
-      final int randomLevel = baseLevel + variation;
-      
-      return randomLevel;
+      throw Exception('소음 로그 조회 실패: ${response.statusCode}');
     } catch (e) {
-      print('실시간 소음 레벨 가져오기 오류: $e');
-      return null;
+      print('소음 로그 조회 중 오류: $e');
+      // Mock 데이터 반환
+      return _getMockNoiseLogs();
     }
   }
 
-  // 소음 로그 가져오기 (아직 API 없어서 더미 데이터 반환)
+  // 기존 getNoiseLogs 메소드는 호환성을 위해 유지
   static Future<List<Map<String, dynamic>>> getNoiseLogs() async {
+    return await getNoiseSessionLogs();
+  }
+
+  // 내 좌석의 실시간 소음 레벨 가져오기 (아직 API 없어서 더미 데이터 반환)
+  static Future<int> getCurrentNoiseLevel() async {
     try {
-      final token = await UserService.getAuthToken();
+      // 실제 API 호출 (향후 구현)
+      // final response = await http.get(Uri.parse('$baseUrl/noise/current'));
       
-      // 토큰이 없으면 캐시 데이터 반환
-      if (token == null) {
-        return _getDummyData();
-      }
-      
-      // API 구현 시 주석 해제
-      /*
-      final response = await http.get(
-        Uri.parse('$baseUrl/noise/logs'),
-        headers: {
-          'Authorization': 'Bearer $token',
-        },
-      ).timeout(const Duration(seconds: 10));
-      
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> data = jsonDecode(response.body);
-        if (data['success'] == true && data['data'] != null) {
-          final List<dynamic> logs = data['data'];
-          
-          // 캐시에 저장
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString(noiseLogsKey, jsonEncode(logs));
-          
-          return logs.cast<Map<String, dynamic>>();
-        }
-      }
-      
-      print('소음 로그 가져오기 실패: ${response.statusCode}, ${response.body}');
-      return _getDummyData();
-      */
-      
-      // API 연동 전에는 더미 데이터 반환
-      return _getDummyData();
+      // 임시로 랜덤 값 반환 (35-55dB 범위)
+      return 35 + (DateTime.now().millisecondsSinceEpoch % 21);
     } catch (e) {
-      print('소음 로그 가져오기 오류: $e');
-      return _getDummyData();
+      print('현재 소음 레벨 가져오기 오류: $e');
+      return 40; // 기본값
     }
   }
-  
-  // 더미 데이터 생성 (API 연동 전 테스트용)
-  static List<Map<String, dynamic>> _getDummyData() {
+
+  // Mock 소음 로그 데이터 생성
+  static List<Map<String, dynamic>> _getMockNoiseLogs() {
     final now = DateTime.now();
-    
     return [
       {
-        'level': 55,
-        'isExceeded': true,
-        'timestamp': DateTime(now.year, now.month, now.day, 14, 32).toIso8601String(),
+        'sessionId': 1,
+        'startTime': now.subtract(Duration(hours: 2)).toIso8601String(),
+        'endTime': now.subtract(Duration(hours: 1, minutes: 30)).toIso8601String(),
+        'averageDecibel': 42,
+        'maxDecibel': 58,
+        'noiseExceededCount': 3,
+        'seatCode': 'A-4',
       },
       {
-        'level': 48,
-        'isExceeded': false,
-        'timestamp': DateTime(now.year, now.month, now.day, 13, 45).toIso8601String(),
+        'sessionId': 2,
+        'startTime': now.subtract(Duration(hours: 5)).toIso8601String(),
+        'endTime': now.subtract(Duration(hours: 3, minutes: 45)).toIso8601String(),
+        'averageDecibel': 38,
+        'maxDecibel': 45,
+        'noiseExceededCount': 0,
+        'seatCode': 'A-4',
       },
       {
-        'level': 42,
-        'isExceeded': false,
-        'timestamp': DateTime(now.year, now.month, now.day, 12, 15).toIso8601String(),
-      },
-      {
-        'level': 37,
-        'isExceeded': false,
-        'timestamp': DateTime(now.year, now.month, now.day, 10, 30).toIso8601String(),
-      },
-      {
-        'level': 51,
-        'isExceeded': true,
-        'timestamp': DateTime(now.year, now.month, now.day, 9, 15).toIso8601String(),
+        'sessionId': 3,
+        'startTime': now.subtract(Duration(days: 1, hours: 2)).toIso8601String(),
+        'endTime': now.subtract(Duration(days: 1, hours: 1)).toIso8601String(),
+        'averageDecibel': 45,
+        'maxDecibel': 62,
+        'noiseExceededCount': 5,
+        'seatCode': 'B-2',
       },
     ];
   }
 
-  // TODO: 외부 마이크 연동을 위한 메서드 (향후 구현 예정)
-  /*
-  // 마이크 모듈 초기화
-  static Future<bool> _initMicrophoneModule() async {
+  // 실시간 소음 모니터링 시작 (향후 구현)
+  static Future<void> startNoiseMonitoring(Function(int) onNoiseLevel) async {
+    // TODO: 마이크 권한 요청 및 실시간 소음 측정
+    // _noiseCallback = onNoiseLevel;
+    // _isListening = true;
+    print('소음 모니터링 시작 (구현 예정)');
+  }
+
+  // 실시간 소음 모니터링 중지 (향후 구현)
+  static Future<void> stopNoiseMonitoring() async {
+    // TODO: 소음 측정 중지
+    // _isListening = false;
+    // _noiseCallback = null;
+    print('소음 모니터링 중지 (구현 예정)');
+  }
+
+  // 소음 데이터 서버에 전송 (향후 구현)
+  static Future<bool> sendNoiseData(int decibelLevel) async {
     try {
-      final bool result = await _channel.invokeMethod('initMicrophone');
-      return result;
+      final token = await UserService.getToken();
+      if (token == null) {
+        throw Exception('인증 토큰이 없습니다.');
+      }
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/noise/record'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: json.encode({
+          'decibelLevel': decibelLevel,
+          'timestamp': DateTime.now().toIso8601String(),
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        return data['success'] == true;
+      }
+      
+      return false;
     } catch (e) {
-      print('마이크 모듈 초기화 오류: $e');
+      print('소음 데이터 전송 중 오류: $e');
       return false;
     }
   }
-  
-  // 실시간 소음 레벨 리스너 설정
-  static Future<bool> listenToNoiseLevel(Function(int) callback) async {
-    if (_isListening) {
-      // 이미 리스닝 중인 경우 콜백만 업데이트
-      _noiseCallback = callback;
-      return true;
-    }
-    
-    try {
-      _noiseCallback = callback;
-      
-      // 네이티브 쪽 리스너 설정
-      await _channel.invokeMethod('startListening');
-      
-      // 리스닝 이벤트 설정
-      _channel.setMethodCallHandler((call) async {
-        if (call.method == 'onNoiseLevel') {
-          final int level = call.arguments as int;
-          if (_noiseCallback != null) {
-            _noiseCallback!(level);
-          }
-        }
-      });
-      
-      _isListening = true;
-      return true;
-    } catch (e) {
-      print('소음 레벨 리스너 설정 오류: $e');
-      return false;
-    }
-  }
-  
-  // 리스너 정리
-  static Future<void> disposeListener() async {
-    if (!_isListening) return;
-    
-    try {
-      await _channel.invokeMethod('stopListening');
-      _isListening = false;
-      _noiseCallback = null;
-    } catch (e) {
-      print('소음 레벨 리스너 정리 오류: $e');
-    }
-  }
-  */
 } 

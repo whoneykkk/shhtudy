@@ -37,12 +37,26 @@ class Notice {
   // JSON 데이터로부터 객체 생성 (API 응답 처리용)
   factory Notice.fromJson(Map<String, dynamic> json, {bool? isReadStatus}) {
     return Notice(
-      id: json['id'] ?? 0,
+      id: json['noticeId'] ?? 0,  // 백엔드에서 noticeId로 전송
       title: json['title'] ?? '',
       content: json['content'] ?? '',
-      createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']) : DateTime.now(),
-      isRead: isReadStatus ?? json['is_read'] == 1 ?? false,
+      createdAt: json['createdAt'] != null 
+          ? _parseBackendDateTime(json['createdAt']) 
+          : DateTime.now(),
+      isRead: isReadStatus ?? json['isRead'] ?? false,  // 백엔드에서 isRead로 전송
     );
+  }
+  
+  // 백엔드 날짜 형식(yyyy-MM-dd HH:mm)을 DateTime으로 변환
+  static DateTime _parseBackendDateTime(String dateTimeString) {
+    try {
+      // "yyyy-MM-dd HH:mm" 형식을 "yyyy-MM-ddTHH:mm:00" 형식으로 변환
+      final isoString = dateTimeString.replaceAll(' ', 'T') + ':00';
+      return DateTime.parse(isoString);
+    } catch (e) {
+      print('날짜 파싱 오류: $dateTimeString, 오류: $e');
+      return DateTime.now();
+    }
   }
   
   static String _twoDigits(int n) {
@@ -777,7 +791,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                           ),
                                           const SizedBox(width: 12),
                                           Text(
-                                            userProfile?.userAccountId ?? '--',
+                                            userProfile?.nickname ?? '--',
                                             style: const TextStyle(
                                               fontSize: 24,
                                               fontWeight: FontWeight.bold,
@@ -889,7 +903,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                             crossAxisAlignment: CrossAxisAlignment.start,
                                             children: [
                                               Text(
-                                                '포인트: ${userProfile?.points ?? 0} P',
+                                                '포인트: ${userProfile?.points ?? 500} P',
                                                 style: TextStyle(
                                                   fontSize: 16,
                                                   fontWeight: FontWeight.bold,
@@ -897,7 +911,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                                 ),
                                               ),
                                               Text(
-                                                '(${_getPointsStatusText(userProfile?.grade, userProfile?.points ?? 0)})',
+                                                '(${_getPointsStatusText(userProfile?.grade, userProfile?.points ?? 300)})',
                                                 style: TextStyle(
                                                   fontSize: 14,
                                                   color: AppTheme.textColor.withOpacity(0.6),
@@ -1017,7 +1031,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                               child: _buildStatCardGridItem(
                                                 icon: Icons.mood,
                                                 title: '매너 점수',
-                                                value: '${userProfile?.mannerScore ?? 0}점',
+                                                value: '${userProfile?.mannerScore ?? 100}점',
                                                 iconColor: Colors.amber,
                                               ),
                                             ),
@@ -1502,7 +1516,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
   String _getPointsToNextGrade(String? grade) {
     if (grade == null) return '0 P';
     
-    final userPoints = userProfile?.points ?? 0;
+    final userPoints = userProfile?.points ?? 500;
     
     switch (grade.toUpperCase()) {
       case 'WARNING': // C등급
@@ -1524,30 +1538,22 @@ class _MyPageScreenState extends State<MyPageScreen> {
     if (grade == null) return '';
     
     switch (grade.toUpperCase()) {
-      case 'WARNING': // C등급
+      case 'WARNING': // C등급 (0-299P)
         final nextThreshold = 300;
         if (points >= nextThreshold) {
-          return '다음 등급(B)으로 자동 승급 예정';
+          return '다음 등급(B등급)으로 승급 가능';
         } else {
-          final percentage = ((points / nextThreshold) * 100).round();
-          return 'B등급까지 ${nextThreshold - points}P 남음 ($percentage%)';
+          return 'B등급까지 ${nextThreshold - points}P 남음';
         }
-      case 'GOOD': // B등급
+      case 'GOOD': // B등급 (300-699P)
         final nextThreshold = 700;
         if (points >= nextThreshold) {
-          return '다음 등급(A)으로 자동 승급 예정';
+          return '다음 등급(A등급)으로 승급 가능';
         } else {
-          final percentage = (((points - 300) / (nextThreshold - 300)) * 100).round();
-          return 'A등급까지 ${nextThreshold - points}P 남음 ($percentage%)';
+          return 'A등급까지 ${nextThreshold - points}P 남음';
         }
-      case 'SILENT': // A등급 (최고 등급)
-        final maxThreshold = 1000;
-        if (points >= maxThreshold) {
-          return '최고 등급 달성 (100%)';
-        } else {
-          final percentage = (((points - 700) / (maxThreshold - 700)) * 100).round();
-          return '최고 등급 달성 ($percentage%)';
-        }
+      case 'SILENT': // A등급 (700P 이상, 최고 등급)
+        return '최고 등급 달성';
       default:
         return '';
     }

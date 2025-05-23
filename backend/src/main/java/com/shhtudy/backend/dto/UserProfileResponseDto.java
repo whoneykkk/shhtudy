@@ -8,7 +8,7 @@ import lombok.Setter;
 public class UserProfileResponseDto {
     private String userId;
     private String name;
-    private String userAccountId;
+    private String nickname;
     private String grade;
     private int remainingTime;
     private String currentSeat;

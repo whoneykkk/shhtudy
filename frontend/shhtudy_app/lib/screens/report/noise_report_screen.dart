@@ -4,7 +4,9 @@ import '../../theme/app_theme.dart';
 import '../mypage/my_page_screen.dart';
 import 'noise_log_screen.dart';
 import '../../services/noise_service.dart';
+import '../../services/user_service.dart';
 import '../../models/noise_log.dart';
+import '../../models/user_profile.dart';
 import '../../services/alert_service.dart';
 import '../../widgets/profile_button.dart';
 
@@ -29,6 +31,7 @@ class _NoiseReportScreenState extends State<NoiseReportScreen> {
 
   // 데이터 상태 변수
   bool _isLoading = true;
+  UserProfile? _userProfile; // 사용자 프로필 추가
   String? _grade;
   double? _averageDecibel;
   String? _currentSeatCode;
@@ -44,8 +47,24 @@ class _NoiseReportScreenState extends State<NoiseReportScreen> {
   @override
   void initState() {
     super.initState();
+    _loadUserProfile(); // 사용자 프로필을 먼저 로드
     _loadNoiseData();
     _checkUnreadAlerts(); // 읽지 않은 알림 확인
+  }
+
+  // 사용자 프로필 로드
+  Future<void> _loadUserProfile() async {
+    try {
+      final profile = await UserService.getUserProfile();
+      if (mounted) {
+        setState(() {
+          _userProfile = profile;
+          _currentSeatCode = profile?.currentSeat; // 프로필에서 직접 좌석 정보 가져오기
+        });
+      }
+    } catch (e) {
+      print('사용자 프로필 로딩 오류: $e');
+    }
   }
 
   // 읽지 않은 알림 확인
@@ -91,9 +110,12 @@ class _NoiseReportScreenState extends State<NoiseReportScreen> {
       }
       
       setState(() {
-        _grade = noiseStats?['grade'] ?? 'GOOD';
-        _averageDecibel = noiseStats?['averageDecibel'] ?? 40.0;
-        _currentSeatCode = noiseStats?['currentSeat'] ?? '--';
+        _grade = noiseStats?['grade'] ?? _userProfile?.grade ?? 'GOOD';
+        _averageDecibel = noiseStats?['averageDecibel'] ?? _userProfile?.averageDecibel ?? 40.0;
+        // 좌석 정보는 이미 _loadUserProfile에서 설정했으므로 여기서는 업데이트하지 않음
+        if (_currentSeatCode == null) {
+          _currentSeatCode = noiseStats?['currentSeat'] ?? '--';
+        }
         _noiseLogs = noiseLogs;
         
         // 추가 통계 데이터 설정
@@ -109,9 +131,9 @@ class _NoiseReportScreenState extends State<NoiseReportScreen> {
       if (!mounted) return;
       
       setState(() {
-        _grade = 'GOOD';
-        _averageDecibel = 40.0;
-        _currentSeatCode = '--';
+        _grade = _userProfile?.grade ?? 'GOOD';
+        _averageDecibel = _userProfile?.averageDecibel ?? 40.0;
+        // _currentSeatCode는 이미 _loadUserProfile에서 설정됨
         _maxDecibel = 0;
         _noiseExceededCount = 0;
         _quietnessPercentage = 0;

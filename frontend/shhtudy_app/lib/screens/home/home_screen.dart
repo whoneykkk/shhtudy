@@ -29,6 +29,10 @@ class _HomeScreenState extends State<HomeScreen> {
   double progressValue = 0.5;  // 프로그레스 바 초기값 50%
   int? currentRealtimeDecibel; // 실시간 데시벨 값 (테스트용 임시값)
   bool hasUnreadAlerts = false; // 읽지 않은 알림 여부
+  
+  // 시간 감소 타이머 관련
+  Timer? _timeDecreaseTimer;
+  int? _localRemainingTime; // 로컬에서 관리하는 남은 시간
 
   @override
   void initState() {
@@ -60,6 +64,9 @@ class _HomeScreenState extends State<HomeScreen> {
         timer.cancel();
       }
     });
+    
+    // 시간 감소 타이머 시작
+    _startTimeDecreaseTimer();
   }
 
   // 데이터베이스에서 공지사항과 메시지 불러오기
@@ -97,7 +104,7 @@ class _HomeScreenState extends State<HomeScreen> {
           
           // 정적 리스트 업데이트
           MyPageScreen.tempNotices = noticesJson.map((json) {
-            return Notice.fromJson(json);
+            return Notice.fromJson(json);  // 백엔드 NoticeResponseDto 구조에 맞춤
           }).toList();
         }
       }
@@ -143,6 +150,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void dispose() {
     // TODO: 마이크 리스너 정리 코드 추가 필요
     // MicrophoneService.disposeListener();
+    _stopTimeDecreaseTimer(); // 타이머 정리
     super.dispose();
   }
 
@@ -162,12 +170,18 @@ class _HomeScreenState extends State<HomeScreen> {
         setState(() {
           userProfile = profile;
           
+          // 로컬 남은 시간 초기화
+          _localRemainingTime = profile.remainingTime;
+          
           // 프로그레스바 값 계산 - 포인트 기반으로 등급별 다른 범위 사용
           progressValue = _calculateProgress(profile.grade, profile.points);
           
           // 실시간 데시벨값은 별도 함수에서 로딩
           isLoading = false;
         });
+        
+        // 시간 타이머 재시작 (좌석 상태가 변경될 수 있으므로)
+        _startTimeDecreaseTimer();
         
         // 프로필 로드 후 즉시 실시간 소음 레벨도 불러오기
         _loadRealtimeNoiseLevel();
@@ -440,7 +454,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       isLoading
                         ? const CircularProgressIndicator()
                         : Text(
-                            formatRemainingTime(userProfile?.remainingTime),
+                            formatRemainingTime(_localRemainingTime),
                         style: TextStyle(
                           fontSize: 36,
                           fontWeight: FontWeight.w700,
@@ -573,7 +587,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     child: CircularProgressIndicator(),
                                   )
                                 : Text(
-                                    (userProfile?.mannerScore ?? 0).toString().padLeft(2, '0'),
+                                    (userProfile?.mannerScore ?? 100).toString().padLeft(3, '0'),
                                 style: TextStyle(
                                   fontSize: 40,
                                   fontWeight: FontWeight.w700,
@@ -796,5 +810,47 @@ class _HomeScreenState extends State<HomeScreen> {
       default:
         return 0.0;
     }
+  }
+
+  // 시간 감소 타이머 시작
+  void _startTimeDecreaseTimer() {
+    _timeDecreaseTimer?.cancel(); // 기존 타이머가 있으면 취소
+    
+    _timeDecreaseTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted && _localRemainingTime != null && _localRemainingTime! > 0) {
+        // 좌석에 앉아있을 때만 시간 감소
+        if (userProfile?.currentSeat != null) {
+          setState(() {
+            _localRemainingTime = _localRemainingTime! - 1;
+          });
+          
+          // 10분마다 서버와 동기화
+          if (_localRemainingTime! % 600 == 0) {
+            _loadUserProfile();
+          }
+          
+          // 시간이 0이 되면 알림 (좌석 해제는 서버에서 처리)
+          if (_localRemainingTime == 0) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('이용 시간이 만료되었습니다. 좌석이 자동으로 해제됩니다.'),
+                backgroundColor: Colors.red,
+                duration: Duration(seconds: 5),
+              ),
+            );
+            // 프로필 새로고침으로 좌석 해제 상태 반영
+            Future.delayed(const Duration(seconds: 2), () {
+              _loadUserProfile();
+            });
+          }
+        }
+      }
+    });
+  }
+  
+  // 시간 감소 타이머 중지
+  void _stopTimeDecreaseTimer() {
+    _timeDecreaseTimer?.cancel();
+    _timeDecreaseTimer = null;
   }
 }

@@ -65,7 +65,7 @@ class UserService {
           final userProfile = UserProfile(
             userId: userData['userId'],
             name: userData['name'], 
-            userAccountId: userData['userAccountId'],
+            nickname: userData['nickname'],
             grade: userData['grade'],
             remainingTime: userData['remainingTime'],
             currentSeat: userData['currentSeat'],
@@ -73,8 +73,8 @@ class UserService {
                 ? double.parse(userData['averageDecibel'].toString())
                 : 0.0,
             noiseOccurrence: userData['noiseOccurrence'] ?? 0,
-            mannerScore: userData['mannerScore'] ?? 0,
-            points: userData['points'] ?? 0,
+            mannerScore: userData['mannerScore'] ?? 100,
+            points: userData['points'] ?? 500,
             phoneNumber: userData['phoneNumber'] ?? '',
           );
           // 로컬에도 저장 - 캐싱용으로만 유지

@@ -4,6 +4,7 @@ import com.shhtudy.backend.dto.NoticeResponseDto;
 import com.shhtudy.backend.global.response.ApiResponse;
 import com.shhtudy.backend.service.FirebaseAuthService;
 import com.shhtudy.backend.service.NoticeService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -13,6 +14,7 @@ import java.util.List;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/notices")
+@Tag(name = "Notice", description = "공지 관련 API")
 
 public class NoticeController {
     private final NoticeService noticeService;
@@ -39,5 +41,17 @@ public class NoticeController {
         noticeService.markAsRead(userId, noticeId);
 
         return ResponseEntity.ok(ApiResponse.success(null, "읽음 처리 완료"));
+    }
+
+    @PostMapping("/read-all")
+    public ResponseEntity<ApiResponse<Void>> readAllNotices(
+            @RequestHeader("Authorization") String authorizationHeader
+    ){
+        String idToken = authorizationHeader.replace("Bearer ", "");
+        String userId = firebaseAuthService.verifyIdToken(idToken);
+
+        noticeService.markAllAsRead(userId);
+
+        return ResponseEntity.ok(ApiResponse.success(null, "모든 공지사항 읽음 처리 완료"));
     }
 }

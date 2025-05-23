@@ -13,11 +13,17 @@ public enum ErrorCode {
 
     // 사용자/계정 관련 오류 (-1000 ~ -1999)
     DUPLICATE_USER(-1001, "이미 가입된 사용자입니다.", HttpStatus.CONFLICT),
-    DUPLICATE_USERID(-1006, "이미 사용 중인 아이디입니다.", HttpStatus.CONFLICT),
     USER_NOT_FOUND(-1002, "존재하지 않는 사용자입니다.", HttpStatus.NOT_FOUND),
     INVALID_PASSWORD(-1003, "비밀번호가 일치하지 않습니다.", HttpStatus.UNAUTHORIZED),
     INVALID_CREDENTIALS(-1004, "전화번호 또는 비밀번호가 올바르지 않습니다.", HttpStatus.UNAUTHORIZED),
     INVALID_FIREBASE_TOKEN(-1005, "유효하지 않은 Firebase 토큰입니다.", HttpStatus.UNAUTHORIZED),
+    DUPLICATE_NICKNAME(-1006,"이미 사용 중인 닉네임입니다.", HttpStatus.CONFLICT),
+    SENDER_NOT_FOUND(-1007, "발신자 정보가 존재하지 않습니다.", HttpStatus.NOT_FOUND),
+    RECEIVER_NOT_FOUND(-1008,"수신자 정보가 존재하지 않습니다.", HttpStatus.NOT_FOUND),
+    NO_USER_IN_SEAT(-1009,"현재 해당 좌석을 이용 중인 사용자가 없습니다." ,HttpStatus.NOT_FOUND),
+
+    //메시지 관련 오류(-2000~-2999)
+    MESSAGE_NOT_FOUND(-2001,"존재하지 않는 메시지 입니다." ,HttpStatus.NOT_FOUND ),
 
     //공지사항 관련 오류(-4000~-4999)
     NOTICE_NOT_FOUND(-4001,"해당 ID의 공지사항이 존재하지 않음", HttpStatus.NOT_FOUND),

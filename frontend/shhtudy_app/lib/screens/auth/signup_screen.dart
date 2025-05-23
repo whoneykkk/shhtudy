@@ -153,7 +153,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           },
           body: jsonEncode({
             'name': nameController.text,
-            'userId': userIdController.text,
+            'nickname': userIdController.text,
             'phoneNumber': phoneController.text,
             'password': passwordController.text,
             'confirmPassword': confirmPasswordController.text,
@@ -362,7 +362,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              // 사용자 아이디 입력
+              // 사용자 닉네임 입력
               Container(
                 decoration: BoxDecoration(
                   color: AppTheme.accentColor,
@@ -371,7 +371,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 child: TextField(
                   controller: userIdController,
                   decoration: InputDecoration(
-                    hintText: '사용할 아이디를 입력해주세요 (4자 이상)',
+                    hintText: '닉네임을 입력해주세요 (2자 이상)',
                     border: InputBorder.none,
                     contentPadding: const EdgeInsets.all(16),
                     prefixIcon: Icon(

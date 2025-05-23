@@ -10,7 +10,6 @@ public class LoginResponseDto {
     private String token;
     private String userId;
     private String name;
-    private String userAccountId;
     private String grade;
     private int remainingTime;
     private String currentSeat;

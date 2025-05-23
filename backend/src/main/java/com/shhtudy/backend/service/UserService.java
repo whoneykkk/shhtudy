@@ -23,8 +23,8 @@ public class UserService {
 
     @Transactional
     public void signUp(SignUpRequestDto request, String firebaseUid) {
-        logger.info("회원가입 시작 - firebaseUid: {}, phoneNumber: {}, userId: {}", 
-                firebaseUid, request.getPhoneNumber(), request.getUserId());
+        logger.info("회원가입 시작 - firebaseUid: {}, phoneNumber: {}, nickname: {}", 
+                firebaseUid, request.getPhoneNumber(), request.getNickname());
         
         try {
             // 1. firebaseUid 중복 확인
@@ -38,11 +38,10 @@ public class UserService {
                 logger.warn("회원가입 실패 - 이미 존재하는 전화번호: {}", request.getPhoneNumber());
                 throw new CustomException(ErrorCode.DUPLICATE_USER);
             }
-            
-            // 1-3. 사용자명(userId) 중복 확인
-            if (userRepository.findByUserId(request.getUserId()).isPresent()) {
-                logger.warn("회원가입 실패 - 이미 존재하는 사용자 아이디: {}", request.getUserId());
-                throw new CustomException(ErrorCode.DUPLICATE_USERID);
+
+            if (userRepository.existsByNickname(request.getNickname())) {
+                logger.warn("회원가입 실패 - 이미 존재하는 닉네임: {}", request.getNickname());
+                throw new CustomException(ErrorCode.DUPLICATE_NICKNAME);
             }
 
             // 2. 비밀번호 일치 확인
@@ -55,7 +54,7 @@ public class UserService {
             User user = new User();
             user.setFirebaseUid(firebaseUid);
             user.setName(request.getName());
-            user.setUserId(request.getUserId());
+            user.setNickname(request.getNickname());
             user.setPhoneNumber(request.getPhoneNumber());
 
             // 4. 비밀번호 암호화 후 저장
@@ -85,7 +84,7 @@ public class UserService {
         UserProfileResponseDto dto = new UserProfileResponseDto();
         dto.setUserId(user.getFirebaseUid());
         dto.setName(user.getName());
-        dto.setUserAccountId(user.getUserId());
+        dto.setNickname(user.getNickname());
         dto.setGrade(user.getGrade().name());
         dto.setRemainingTime(user.getRemainingTime());
         dto.setAverageDecibel(user.getAverageDecibel());
