@@ -56,9 +56,9 @@ public class MessageService {
     public Page<MessageListResponseDto> getMessageList(String firebaseUid, String type, Pageable pageable) {
 
         Page<Message> messages = switch (type) {
-            case "received" -> messageRepository.findByReceiverId(firebaseUid, pageable);
-            case "sent"     -> messageRepository.findBySenderId(firebaseUid, pageable);
-            default         -> messageRepository.findBySenderIdOrReceiverId(firebaseUid, firebaseUid, pageable);
+            case "received" -> messageRepository.findByReceiverIdAndDeletedByReceiverFalse(firebaseUid, pageable);
+            case "sent"     -> messageRepository.findBySenderIdAndDeletedBySenderFalse(firebaseUid, pageable);
+            default         -> messageRepository.findAllVisibleMessages(firebaseUid, pageable);
         };
 
         return messages.map(message -> {
@@ -102,6 +102,13 @@ public class MessageService {
 
         validateMessageAccess(message, firebaseUid);
 
+        if (firebaseUid.equals(message.getSenderId()) && message.isDeletedBySender()) {
+            throw new CustomException(ErrorCode.MESSAGE_NOT_FOUND);
+        }
+        if (firebaseUid.equals(message.getReceiverId()) && message.isDeletedByReceiver()) {
+            throw new CustomException(ErrorCode.MESSAGE_NOT_FOUND);
+        }
+
         if (firebaseUid.equals(message.getReceiverId()) && !message.isRead()) {
             message.setRead(true);
         }
@@ -111,7 +118,33 @@ public class MessageService {
 
         return MessageResponseDto.from(message, getDisplayName(sender));
     }
+
     public long countUnreadMessages(String firebaseUid) {
-        return messageRepository.countByReceiverIdAndReadFalse(firebaseUid);
+        return messageRepository.countByReceiverIdAndReadFalseAndDeletedByReceiverFalse(firebaseUid);
     }
+    
+    @Transactional
+    public void deleteMessage(String firebaseUid, Long messageId) {
+        Message message = messageRepository.findById(messageId)
+                .orElseThrow(() -> new CustomException(ErrorCode.MESSAGE_NOT_FOUND));
+
+        if (!firebaseUid.equals(message.getSenderId()) && !firebaseUid.equals(message.getReceiverId())) {
+            throw new CustomException(ErrorCode.FORBIDDEN); // 권한 없음
+        }
+
+        if (firebaseUid.equals(message.getSenderId())) {
+            message.setDeletedBySender(true);
+        }
+
+        if (firebaseUid.equals(message.getReceiverId())) {
+            message.setDeletedByReceiver(true);
+        }
+
+        if (message.isDeletedBySender() && message.isDeletedByReceiver()) {
+            messageRepository.delete(message);
+        } else {
+            messageRepository.save(message);
+        }
+    }
+
 }

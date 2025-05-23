@@ -24,6 +24,7 @@ public enum ErrorCode {
 
     //메시지 관련 오류(-2000~-2999)
     MESSAGE_NOT_FOUND(-2001,"존재하지 않는 메시지 입니다." ,HttpStatus.NOT_FOUND ),
+    FORBIDDEN(-2002, "접근 권한이 없습니다.", HttpStatus.FORBIDDEN),
 
     //공지사항 관련 오류(-4000~-4999)
     NOTICE_NOT_FOUND(-4001,"해당 ID의 공지사항이 존재하지 않음", HttpStatus.NOT_FOUND),
