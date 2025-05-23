@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../mypage/my_page_screen.dart';
+import '../../services/alert_service.dart';
+import '../../widgets/profile_button.dart';
 
 // 좌석 상태 enum
 enum SeatStatus {
@@ -36,6 +38,7 @@ class _SeatScreenState extends State<SeatScreen> {
   String selectedZone = 'A구역';
   final List<String> zones = ['A구역', 'B구역', 'C구역', 'D구역'];
   final TextEditingController _messageController = TextEditingController();
+  bool hasUnreadAlerts = false; // 읽지 않은 알림 여부
 
   // 구역별 임시 좌석 데이터
   final Map<String, List<SeatInfo>> zoneSeats = {
@@ -74,6 +77,22 @@ class _SeatScreenState extends State<SeatScreen> {
       SeatInfo(code: 'd-8', status: SeatStatus.empty),
     ],
   };
+
+  @override
+  void initState() {
+    super.initState();
+    _checkUnreadAlerts(); // 읽지 않은 알림 확인
+  }
+
+  // 읽지 않은 알림 확인
+  Future<void> _checkUnreadAlerts() async {
+    final unreadStatus = await AlertService.updateAlertStatus();
+    if (mounted) {
+      setState(() {
+        hasUnreadAlerts = unreadStatus;
+      });
+    }
+  }
 
   Color getStatusColor(SeatStatus status) {
     switch (status) {
@@ -258,35 +277,18 @@ class _SeatScreenState extends State<SeatScreen> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  // 프로필 버튼
-                  GestureDetector(
+                  // 프로필 버튼 (새 위젯으로 교체)
+                  ProfileButton(
+                    hasUnreadAlerts: hasUnreadAlerts,
                     onTap: () {
                       Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const MyPageScreen(),
-                        ),
-                      );
+                        context, 
+                        MaterialPageRoute(builder: (context) => const MyPageScreen())
+                      ).then((_) {
+                        // 마이페이지에서 돌아오면 알림 상태 다시 확인
+                        _checkUnreadAlerts();
+                      });
                     },
-                    child: Container(
-                      padding: const EdgeInsets.all(2),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: AppTheme.primaryColor.withOpacity(0.3),
-                          width: 2,
-                        ),
-                      ),
-                      child: CircleAvatar(
-                        radius: 16,
-                        backgroundColor: Colors.grey[200],
-                        child: Icon(
-                          Icons.person_outline,
-                          color: AppTheme.textColor,
-                          size: 20,
-                        ),
-                      ),
-                    ),
                   ),
                 ],
               ),

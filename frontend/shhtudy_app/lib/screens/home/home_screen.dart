@@ -7,6 +7,12 @@ import '../../models/user_profile.dart';
 import '../../services/user_service.dart';
 import '../auth/login_screen.dart';
 import '../../services/noise_service.dart';
+import '../../services/alert_service.dart';
+import '../../widgets/profile_button.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import '../../config/api_config.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 
 class HomeScreen extends StatefulWidget {
@@ -22,12 +28,15 @@ class _HomeScreenState extends State<HomeScreen> {
   bool isLoading = true;
   double progressValue = 0.5;  // 프로그레스 바 초기값 50%
   int? currentRealtimeDecibel; // 실시간 데시벨 값 (테스트용 임시값)
+  bool hasUnreadAlerts = false; // 읽지 않은 알림 여부
 
   @override
   void initState() {
     super.initState();
     _loadUserProfile();
     _loadRealtimeNoiseLevel(); // 실시간 소음 레벨 불러오기
+    _checkUnreadAlerts(); // 읽지 않은 알림 확인
+    _fetchNoticesAndMessages(); // 홈 화면에서도 공지사항과 메시지 로드
     
     // 외부 마이크 연동을 위한 리스너 설정 준비
     // 실제 구현 시 마이크 데이터 스트림을 구독하는 방식으로 변경 예정
@@ -51,6 +60,83 @@ class _HomeScreenState extends State<HomeScreen> {
         timer.cancel();
       }
     });
+  }
+
+  // 데이터베이스에서 공지사항과 메시지 불러오기
+  Future<void> _fetchNoticesAndMessages() async {
+    try {
+      // 사용자 토큰 가져오기
+      final token = await UserService.getToken();
+      if (token == null) {
+        return;
+      }
+      
+      // 백엔드 API URL
+      final baseUrl = '${ApiConfig.baseUrl}';
+      
+      // 공지사항 API 호출
+      final noticesResponse = await http.get(
+        Uri.parse('$baseUrl/notices'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      // 메시지 API 호출
+      final messagesResponse = await http.get(
+        Uri.parse('$baseUrl/messages'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (noticesResponse.statusCode == 200) {
+        final Map<String, dynamic> noticesData = json.decode(noticesResponse.body);
+        if (noticesData['success'] == true && noticesData['data'] != null) {
+          final List<dynamic> noticesJson = noticesData['data'];
+          
+          // 정적 리스트 업데이트
+          MyPageScreen.tempNotices = noticesJson.map((json) {
+            return Notice.fromJson(json);
+          }).toList();
+        }
+      }
+
+      if (messagesResponse.statusCode == 200) {
+        final Map<String, dynamic> messagesData = json.decode(messagesResponse.body);
+        if (messagesData['success'] == true && messagesData['data'] != null) {
+          final List<dynamic> messagesJson = messagesData['data'];
+          final String currentUserId = await _getCurrentUserId();
+          
+          // 정적 리스트 업데이트
+          MyPageScreen.tempMessages = messagesJson.map((json) {
+            return Message.fromJson(json, currentUserId);
+          }).toList();
+        }
+      }
+
+      // 데이터 로드 후 알림 상태 업데이트
+      await _checkUnreadAlerts();
+      
+    } catch (e) {
+      print('공지사항/메시지 로딩 오류: $e');
+    }
+  }
+  
+  // 현재 사용자 ID 가져오기
+  Future<String> _getCurrentUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('user_id') ?? '';
+  }
+
+  // 읽지 않은 알림 확인
+  Future<void> _checkUnreadAlerts() async {
+    final unreadStatus = await AlertService.updateAlertStatus();
+    if (mounted) {
+      setState(() {
+        hasUnreadAlerts = unreadStatus;
+      });
+    }
   }
 
   @override
@@ -310,35 +396,18 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    // 프로필 버튼
-                    GestureDetector(
+                    // 프로필 버튼 (새 위젯으로 교체)
+                    ProfileButton(
+                      hasUnreadAlerts: hasUnreadAlerts,
                       onTap: () {
                         Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const MyPageScreen(),
-                          ),
-                        );
+                          context, 
+                          MaterialPageRoute(builder: (context) => const MyPageScreen())
+                        ).then((_) {
+                          // 마이페이지에서 돌아오면 알림 상태 다시 확인
+                          _checkUnreadAlerts();
+                        });
                       },
-                      child: Container(
-                        padding: const EdgeInsets.all(2),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: AppTheme.primaryColor.withOpacity(0.3),
-                            width: 2,
-                          ),
-                        ),
-                        child: CircleAvatar(
-                          radius: 16,
-                          backgroundColor: Colors.grey[200],
-                          child: Icon(
-                            Icons.person_outline,
-                            color: AppTheme.textColor,
-                            size: 20,
-                          ),
-                        ),
-                      ),
                     ),
                   ],
                 ),

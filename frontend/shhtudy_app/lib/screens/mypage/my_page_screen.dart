@@ -5,9 +5,13 @@ import 'notice_screen.dart';
 import 'message_screen.dart';
 import '../../models/user_profile.dart';
 import '../../services/user_service.dart';
+import '../../services/alert_service.dart';
+import '../../config/api_config.dart';
 import 'dart:math' as math;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 // 공지사항 모델 클래스
 class Notice {
@@ -33,11 +37,11 @@ class Notice {
   // JSON 데이터로부터 객체 생성 (API 응답 처리용)
   factory Notice.fromJson(Map<String, dynamic> json, {bool? isReadStatus}) {
     return Notice(
-      id: json['id'],
-      title: json['title'],
-      content: json['content'],
-      createdAt: DateTime.parse(json['created_at']),
-      isRead: isReadStatus ?? false,
+      id: json['id'] ?? 0,
+      title: json['title'] ?? '',
+      content: json['content'] ?? '',
+      createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']) : DateTime.now(),
+      isRead: isReadStatus ?? json['is_read'] == 1 ?? false,
     );
   }
   
@@ -80,11 +84,11 @@ class Message {
     final bool isSentMessage = json['sender_id'] == currentUserId;
     
     return Message(
-      messageId: json['message_id'],
-      senderId: json['sender_id'],
-      receiverId: json['receiver_id'],
-      content: json['content'],
-      sentAt: DateTime.parse(json['sent_at']),
+      messageId: json['message_id'] ?? 0,
+      senderId: json['sender_id'] ?? '',
+      receiverId: json['receiver_id'] ?? '',
+      content: json['content'] ?? '',
+      sentAt: json['sent_at'] != null ? DateTime.parse(json['sent_at']) : DateTime.now(),
       isRead: json['is_read'] == 1,
       isSent: isSentMessage,
     );
@@ -99,44 +103,9 @@ class Message {
 class MyPageScreen extends StatefulWidget {
   const MyPageScreen({super.key});
 
-  // 임시 데이터 - 실제 구현 시 API 호출로 대체 필요
-  static final List<Notice> tempNotices = [
-    Notice(
-      id: 1, 
-      title: '시스템 점검 안내', 
-      content: '안녕하세요. Shh-tudy 입니다.\n\n서비스 안정화를 위한 시스템 점검이 진행될 예정입니다.\n\n점검 일시: 2024년 3월 20일 02:00 ~ 06:00\n점검 내용: 서버 안정화 및 성능 개선\n\n더 나은 서비스를 제공하도록 하겠습니다.\n감사합니다.',
-      createdAt: DateTime(2024, 3, 19),
-      isRead: true,
-    ),
-    Notice(
-      id: 2, 
-      title: '신규 기능 업데이트', 
-      content: '안녕하세요. Shh-tudy 입니다.\n\n새로운 기능이 추가되었습니다.\n\n1. 실시간 소음 알림\n2. 좌석 이용 통계\n3. UI/UX 개선\n\n많은 이용 부탁드립니다.\n감사합니다.',
-      createdAt: DateTime(2024, 3, 15),
-      isRead: false,
-    ),
-  ];
-
-  static final List<Message> tempMessages = [
-    Message(
-      messageId: 1, 
-      senderId: 'b-4',
-      receiverId: 'user123',
-      content: '조용히 해주세요 조용히 해주세요 조용히 해주세요 조용히 해주세요 조용히 해주세요', 
-      sentAt: DateTime(2024, 3, 19, 16, 25),
-      isRead: false,
-      isSent: false,
-    ),
-    Message(
-      messageId: 2, 
-      senderId: 'user123',
-      receiverId: 'b-1',
-      content: '책상 발로 차지 말아주세요', 
-      sentAt: DateTime(2024, 3, 19, 16, 32),
-      isRead: true,
-      isSent: true,
-    ),
-  ];
+  // API로부터 데이터를 받아오기 위한 정적 리스트 (초기에는 빈 리스트로 시작)
+  static List<Notice> tempNotices = [];
+  static List<Message> tempMessages = [];
 
   @override
   State<MyPageScreen> createState() => _MyPageScreenState();
@@ -144,10 +113,10 @@ class MyPageScreen extends StatefulWidget {
 
 class _MyPageScreenState extends State<MyPageScreen> {
   // 읽지 않은 공지사항 개수
-  int get unreadNoticeCount => MyPageScreen.tempNotices.where((notice) => !notice.isRead).length;
+  int unreadNoticeCount = 0;
   
   // 읽지 않은 쪽지 개수
-  int get unreadMessageCount => MyPageScreen.tempMessages.where((message) => !message.isRead && !message.isSent).length;
+  int unreadMessageCount = 0;
   
   // 사용자 프로필 정보
   UserProfile? userProfile;
@@ -160,6 +129,102 @@ class _MyPageScreenState extends State<MyPageScreen> {
   void initState() {
     super.initState();
     _loadUserProfile();
+    _fetchNoticesAndMessages(); // 데이터베이스에서 공지사항과 메시지 불러오기
+  }
+
+  // 데이터베이스에서 공지사항과 메시지 불러오기
+  Future<void> _fetchNoticesAndMessages() async {
+    setState(() {
+      isLoading = true;
+    });
+
+    try {
+      // 사용자 토큰 가져오기
+      final token = await UserService.getToken();
+      if (token == null) {
+        throw Exception('로그인이 필요합니다');
+      }
+      
+      // 백엔드 API URL
+      final baseUrl = '${ApiConfig.baseUrl}';
+      
+      // 공지사항 API 호출
+      final noticesResponse = await http.get(
+        Uri.parse('$baseUrl/notices'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      // 메시지 API 호출
+      final messagesResponse = await http.get(
+        Uri.parse('$baseUrl/messages'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (noticesResponse.statusCode == 200) {
+        final Map<String, dynamic> noticesData = json.decode(noticesResponse.body);
+        if (noticesData['success'] == true && noticesData['data'] != null) {
+          final List<dynamic> noticesJson = noticesData['data'];
+          
+          // 정적 리스트 업데이트
+          MyPageScreen.tempNotices = noticesJson.map((json) {
+            return Notice.fromJson(json);
+          }).toList();
+        }
+      }
+
+      if (messagesResponse.statusCode == 200) {
+        final Map<String, dynamic> messagesData = json.decode(messagesResponse.body);
+        if (messagesData['success'] == true && messagesData['data'] != null) {
+          final List<dynamic> messagesJson = messagesData['data'];
+          final String currentUserId = await _getCurrentUserId();
+          
+          // 정적 리스트 업데이트
+          MyPageScreen.tempMessages = messagesJson.map((json) {
+            return Message.fromJson(json, currentUserId);
+          }).toList();
+        }
+      }
+
+      // 알림 카운트 업데이트
+      _loadNotificationCounts();
+      
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('공지사항/메시지 로딩 오류: $e');
+      
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
+    }
+  }
+  
+  // 현재 사용자 ID 가져오기
+  Future<String> _getCurrentUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('user_id') ?? '';
+  }
+
+  // 알림 정보 불러오기
+  Future<void> _loadNotificationCounts() async {
+    setState(() {
+      unreadNoticeCount = MyPageScreen.tempNotices.where((notice) => !notice.isRead).length;
+      unreadMessageCount = MyPageScreen.tempMessages
+          .where((message) => !message.isRead && !message.isSent)
+          .length;
+    });
+    
+    // 알림 상태 변경을 모든 화면에 알림
+    AlertService.updateAlertStatus();
   }
 
   // 사용자 프로필 정보 불러오기
@@ -311,6 +376,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
       MaterialPageRoute(builder: (context) => const NoticeScreen()),
     ).then((_) {
       // 화면으로 돌아왔을 때 상태 즉시 업데이트
+      _loadNotificationCounts();
       setState(() {
         // 이미 Notice 화면에서 나올 때 읽음 처리가 되었을 것임
       });
@@ -323,6 +389,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
       MaterialPageRoute(builder: (context) => const MessageScreen()),
     ).then((_) {
       // 화면으로 돌아왔을 때 상태 즉시 업데이트
+      _loadNotificationCounts();
       setState(() {
         // 이미 Message 화면에서 나올 때 읽음 처리가 되었을 것임
       });
@@ -344,7 +411,13 @@ class _MyPageScreenState extends State<MyPageScreen> {
           break;
         }
       }
+      
+      // 읽지 않은 공지사항 개수 업데이트
+      _loadNotificationCounts();
     });
+    
+    // 백엔드 API를 통해 읽음 처리 (향후 구현)
+    _markNoticeAsReadApi(notice.id);
 
     showDialog(
       context: context,
@@ -405,6 +478,33 @@ class _MyPageScreenState extends State<MyPageScreen> {
       ),
     );
   }
+  
+  // 백엔드 API를 통해 공지사항 읽음 처리
+  Future<void> _markNoticeAsReadApi(int noticeId) async {
+    try {
+      final token = await UserService.getToken();
+      if (token != null) {
+        // 백엔드 API 호출
+        final baseUrl = '${ApiConfig.baseUrl}';
+        final response = await http.post(
+          Uri.parse('$baseUrl/notices/$noticeId/read'),
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        );
+        
+        if (response.statusCode == 200) {
+          // 성공적으로 읽음 처리 후 최신 공지사항 목록 다시 가져오기
+          _fetchNoticesAndMessages();
+          
+          // 알림 상태 업데이트하여 다른 화면에 알림
+          AlertService.updateAlertStatus();
+        }
+      }
+    } catch (e) {
+      print('공지사항 읽음 처리 오류: $e');
+    }
+  }
 
   void _showMessageDetail(BuildContext context, Message message) {
     // 쪽지 읽음 처리 (받은 쪽지만)
@@ -424,7 +524,13 @@ class _MyPageScreenState extends State<MyPageScreen> {
             break;
           }
         }
+        
+        // 읽지 않은 메시지 개수 업데이트
+        _loadNotificationCounts();
       });
+      
+      // 백엔드 API를 통해 읽음 처리 (향후 구현)
+      _markMessageAsReadApi(message.messageId);
     }
 
     showDialog(
@@ -482,6 +588,33 @@ class _MyPageScreenState extends State<MyPageScreen> {
         ),
       ),
     );
+  }
+  
+  // 백엔드 API를 통해 메시지 읽음 처리
+  Future<void> _markMessageAsReadApi(int messageId) async {
+    try {
+      final token = await UserService.getToken();
+      if (token != null) {
+        // 백엔드 API 호출
+        final baseUrl = '${ApiConfig.baseUrl}';
+        final response = await http.post(
+          Uri.parse('$baseUrl/messages/$messageId/read'),
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        );
+        
+        if (response.statusCode == 200) {
+          // 성공적으로 읽음 처리 후 최신 쪽지 목록 다시 가져오기
+          _fetchNoticesAndMessages();
+          
+          // 알림 상태 업데이트하여 다른 화면에 알림
+          AlertService.updateAlertStatus();
+        }
+      }
+    } catch (e) {
+      print('쪽지 읽음 처리 오류: $e');
+    }
   }
 
   @override
@@ -959,11 +1092,18 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                 if (unreadNoticeCount > 0) ...[
                                   const SizedBox(width: 8),
                                   Container(
-                                    width: 8,
-                                    height: 8,
-                                    decoration: const BoxDecoration(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
                                       color: Colors.red,
-                                      shape: BoxShape.circle,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      '$unreadNoticeCount',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -989,37 +1129,50 @@ class _MyPageScreenState extends State<MyPageScreen> {
                             ),
                             child: Column(
                               children: [
-                                for (var i = 0; i < MyPageScreen.tempNotices.length; i++) ...[
-                                  GestureDetector(
-                                    onTap: () => _showNoticeDetail(context, MyPageScreen.tempNotices[i]),
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(vertical: 8),
-                                      child: Row(
-                                        children: [
-                                          Expanded(
-                                            child: Text(
-                                              MyPageScreen.tempNotices[i].title,
-                                              style: const TextStyle(fontSize: 14),
-                                            ),
-                                          ),
-                                          Text(
-                                            MyPageScreen.tempNotices[i].formattedDate,
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: AppTheme.textColor.withOpacity(0.6),
-                                            ),
-                                          ),
-                                        ],
+                                // 공지사항이 있을 경우 최신 2개만 표시
+                                if (MyPageScreen.tempNotices.isEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    child: Text(
+                                      '공지사항이 없습니다',
+                                      style: TextStyle(
+                                        color: AppTheme.textColor.withOpacity(0.6),
+                                        fontSize: 14,
                                       ),
                                     ),
-                                  ),
-                                  if (i < MyPageScreen.tempNotices.length - 1)
-                                    Divider(
-                                      color: AppTheme.textColor.withOpacity(0.1),
-                                      height: 16,
-                                      thickness: 1,
+                                  )
+                                else
+                                  for (var i = 0; i < math.min(2, MyPageScreen.tempNotices.length); i++) ...[
+                                    GestureDetector(
+                                      onTap: () => _showNoticeDetail(context, MyPageScreen.tempNotices[i]),
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(vertical: 8),
+                                        child: Row(
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                MyPageScreen.tempNotices[i].title,
+                                                style: const TextStyle(fontSize: 14),
+                                              ),
+                                            ),
+                                            Text(
+                                              MyPageScreen.tempNotices[i].formattedDate,
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: AppTheme.textColor.withOpacity(0.6),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
                                     ),
-                                ],
+                                    if (i < math.min(2, MyPageScreen.tempNotices.length) - 1)
+                                      Divider(
+                                        color: AppTheme.textColor.withOpacity(0.1),
+                                        height: 16,
+                                        thickness: 1,
+                                      ),
+                                  ],
                               ],
                             ),
                           ),
@@ -1061,11 +1214,18 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                 if (unreadMessageCount > 0) ...[
                                   const SizedBox(width: 8),
                                   Container(
-                                    width: 8,
-                                    height: 8,
-                                    decoration: const BoxDecoration(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
                                       color: Colors.red,
-                                      shape: BoxShape.circle,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      '$unreadMessageCount',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -1091,61 +1251,74 @@ class _MyPageScreenState extends State<MyPageScreen> {
                             ),
                             child: Column(
                               children: [
-                                for (var i = 0; i < MyPageScreen.tempMessages.length; i++) ...[
-                                  GestureDetector(
-                                    onTap: () => _showMessageDetail(context, MyPageScreen.tempMessages[i]),
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(vertical: 8.0),
-                                      child: Row(
-                                        children: [
-                                          // 화살표와 좌석번호
-                                          Text(
-                                            MyPageScreen.tempMessages[i].contactSeatId,
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 14,
-                                            ),
-                                          ),
-                                          // 구분선
-                                          Padding(
-                                            padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                                            child: Text(
-                                              '|',
-                                              style: TextStyle(
-                                                color: AppTheme.textColor.withOpacity(0.3),
+                                // 쪽지가 있을 경우 최신 2개만 표시
+                                if (MyPageScreen.tempMessages.isEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    child: Text(
+                                      '쪽지가 없습니다',
+                                      style: TextStyle(
+                                        color: AppTheme.textColor.withOpacity(0.6),
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  )
+                                else
+                                  for (var i = 0; i < math.min(2, MyPageScreen.tempMessages.length); i++) ...[
+                                    GestureDetector(
+                                      onTap: () => _showMessageDetail(context, MyPageScreen.tempMessages[i]),
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                                        child: Row(
+                                          children: [
+                                            // 화살표와 좌석번호
+                                            Text(
+                                              MyPageScreen.tempMessages[i].contactSeatId,
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
                                                 fontSize: 14,
                                               ),
                                             ),
-                                          ),
-                                          // 쪽지 내용
-                                          Expanded(
-                                            child: Text(
-                                              MyPageScreen.tempMessages[i].content,
-                                              style: const TextStyle(fontSize: 14),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
+                                            // 구분선
+                                            Padding(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                                              child: Text(
+                                                '|',
+                                                style: TextStyle(
+                                                  color: AppTheme.textColor.withOpacity(0.3),
+                                                  fontSize: 14,
+                                                ),
+                                              ),
                                             ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          // 날짜
-                                          Text(
-                                            MyPageScreen.tempMessages[i].formattedDate,
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: AppTheme.textColor.withOpacity(0.6),
+                                            // 쪽지 내용
+                                            Expanded(
+                                              child: Text(
+                                                MyPageScreen.tempMessages[i].content,
+                                                style: const TextStyle(fontSize: 14),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
                                             ),
-                                          ),
-                                        ],
+                                            const SizedBox(width: 8),
+                                            // 날짜
+                                            Text(
+                                              MyPageScreen.tempMessages[i].formattedDate,
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: AppTheme.textColor.withOpacity(0.6),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                  if (i < MyPageScreen.tempMessages.length - 1)
-                                    Divider(
-                                      color: AppTheme.textColor.withOpacity(0.1),
-                                      height: 16,
-                                      thickness: 1,
-                                    ),
-                                ],
+                                    if (i < math.min(2, MyPageScreen.tempMessages.length) - 1)
+                                      Divider(
+                                        color: AppTheme.textColor.withOpacity(0.1),
+                                        height: 16,
+                                        thickness: 1,
+                                      ),
+                                  ],
                               ],
                             ),
                           ),
@@ -1378,5 +1551,12 @@ class _MyPageScreenState extends State<MyPageScreen> {
       default:
         return '';
     }
+  }
+
+  @override
+  void dispose() {
+    // 화면에서 벗어날 때 알림 상태 업데이트
+    AlertService.updateAlertStatus();
+    super.dispose();
   }
 } 

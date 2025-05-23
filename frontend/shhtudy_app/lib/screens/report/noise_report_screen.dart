@@ -5,6 +5,8 @@ import '../mypage/my_page_screen.dart';
 import 'noise_log_screen.dart';
 import '../../services/noise_service.dart';
 import '../../models/noise_log.dart';
+import '../../services/alert_service.dart';
+import '../../widgets/profile_button.dart';
 
 class NoiseReportScreen extends StatefulWidget {
   const NoiseReportScreen({super.key});
@@ -31,6 +33,7 @@ class _NoiseReportScreenState extends State<NoiseReportScreen> {
   double? _averageDecibel;
   String? _currentSeatCode;
   List<NoiseLog> _noiseLogs = [];
+  bool hasUnreadAlerts = false; // 읽지 않은 알림 여부
   
   // 추가 통계 데이터
   int _maxDecibel = 0;
@@ -42,6 +45,17 @@ class _NoiseReportScreenState extends State<NoiseReportScreen> {
   void initState() {
     super.initState();
     _loadNoiseData();
+    _checkUnreadAlerts(); // 읽지 않은 알림 확인
+  }
+
+  // 읽지 않은 알림 확인
+  Future<void> _checkUnreadAlerts() async {
+    final unreadStatus = await AlertService.updateAlertStatus();
+    if (mounted) {
+      setState(() {
+        hasUnreadAlerts = unreadStatus;
+      });
+    }
   }
 
   // 소음 데이터 로드
@@ -169,35 +183,18 @@ class _NoiseReportScreenState extends State<NoiseReportScreen> {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        // 프로필 버튼
-                        GestureDetector(
+                        // 프로필 버튼 (새 위젯으로 교체)
+                        ProfileButton(
+                          hasUnreadAlerts: hasUnreadAlerts,
                           onTap: () {
                             Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const MyPageScreen(),
-                              ),
-                            );
+                              context, 
+                              MaterialPageRoute(builder: (context) => const MyPageScreen())
+                            ).then((_) {
+                              // 마이페이지에서 돌아오면 알림 상태 다시 확인
+                              _checkUnreadAlerts();
+                            });
                           },
-                          child: Container(
-                            padding: const EdgeInsets.all(2),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: AppTheme.primaryColor.withOpacity(0.3),
-                                width: 2,
-                              ),
-                            ),
-                            child: CircleAvatar(
-                              radius: 16,
-                              backgroundColor: Colors.grey[200],
-                              child: Icon(
-                                Icons.person_outline,
-                                color: AppTheme.textColor,
-                                size: 20,
-                              ),
-                            ),
-                          ),
                         ),
                       ],
                     ),
