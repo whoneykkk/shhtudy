@@ -39,6 +39,12 @@ public class Message {
     @Column(nullable = false, updatable = false)
     private LocalDateTime sentAt;
 
+    @Column(nullable = false)
+    private boolean deletedBySender = false;
+
+    @Column(nullable = false)
+    private boolean deletedByReceiver = false;
+
     @PrePersist
     protected void prePersist() {
         this.sentAt = LocalDateTime.now();

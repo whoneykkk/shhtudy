@@ -4,10 +4,19 @@ import com.shhtudy.backend.entity.Message;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface MessageRepository extends JpaRepository<Message, Long> {
-    long countByReceiverIdAndReadFalse(String receiverId);
-    Page<Message> findByReceiverId(String receiverId, Pageable pageable);
-    Page<Message> findBySenderId(String senderId, Pageable pageable);
-    Page<Message> findBySenderIdOrReceiverId(String senderId, String receiverId, Pageable pageable);
+    long countByReceiverIdAndReadFalseAndDeletedByReceiverFalse(String receiverId);
+    Page<Message> findByReceiverIdAndDeletedByReceiverFalse(String receiverId, Pageable pageable);
+    Page<Message> findBySenderIdAndDeletedBySenderFalse(String senderId, Pageable pageable);
+    @Query("""
+        SELECT m FROM Message m
+        WHERE
+            (m.senderId = :uid AND m.deletedBySender = false)
+            OR
+            (m.receiverId = :uid AND m.deletedByReceiver = false)
+    """)
+    Page<Message> findAllVisibleMessages(@Param("uid") String uid, Pageable pageable);
 }

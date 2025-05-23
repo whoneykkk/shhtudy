@@ -79,32 +79,16 @@ public class MessageController {
         return ResponseEntity.ok(ApiResponse.success(count, "조회 성공"));
     }
 
-
-    @Operation(summary = "쪽지 삭제", description = "특정 쪽지를 삭제합니다.")
+    @Operation(summary = "쪽지 삭제", description = "자신이 받은 또는 보낸 쪽지를 삭제합니다. 양측 모두 삭제 시 실제 삭제됩니다.")
     @DeleteMapping("/{messageId}")
     public ResponseEntity<ApiResponse<String>> deleteMessage(
             @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable Long messageId
     ) {
-        String idToken = authorizationHeader.replace("Bearer ", "");
-        String firebaseUid = firebaseAuthService.verifyIdToken(idToken);
-        
-        messageService.deleteMessage(messageId, firebaseUid);
-        return ResponseEntity.ok(ApiResponse.success(null, "쪽지 삭제 완료"));
+        String firebaseUid = firebaseAuthService.verifyIdToken(authorizationHeader.replace("Bearer ", ""));
+        messageService.deleteMessage(firebaseUid, messageId);
+        return ResponseEntity.ok(ApiResponse.success(null, "삭제 완료"));
     }
 
-    @Operation(summary = "좌석으로 쪽지 보내기", description = "특정 좌석에 앉아있는 사용자에게 쪽지를 보냅니다.")
-    @PostMapping("/seats/{seatId}")
-    public ResponseEntity<ApiResponse<String>> sendMessageToSeat(
-            @PathVariable Integer seatId,
-            @RequestBody @Valid MessageSendRequestDto request,
-            @RequestHeader("Authorization") String authorizationHeader) {
-
-        String senderUid = firebaseAuthService.verifyIdToken(authorizationHeader.replace("Bearer ", ""));
-        messageService.sendMessageToSeat(senderUid, seatId, request);
-
-        return ResponseEntity.ok(new ApiResponse<>(true, "쪽지 전송 완료", null));
-    }
- 
 }
 

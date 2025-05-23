@@ -14,7 +14,7 @@ public class AlertService {
 
     public AlertStatusResponseDto getHasUnreadNotifications(String firebaseUid) {
         // 읽지 않은 메시지 확인
-        boolean hasUnreadMessages = messageRepository.countByReceiverIdAndReadFalse(firebaseUid) > 0;
+        boolean hasUnreadMessages = messageRepository.countByReceiverIdAndReadFalseAndDeletedByReceiverFalse(firebaseUid) > 0;
         boolean hasUnreadNotices = noticeReadRepository.existsUnreadNotices(firebaseUid);
 
         AlertStatusResponseDto response = new AlertStatusResponseDto();
