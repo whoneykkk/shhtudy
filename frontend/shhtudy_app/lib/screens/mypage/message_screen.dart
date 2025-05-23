@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import 'my_page_screen.dart';
+import '../../config/api_config.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import '../../services/user_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class MessageScreen extends StatefulWidget {
   const MessageScreen({super.key});
@@ -12,120 +17,106 @@ class MessageScreen extends StatefulWidget {
 class _MessageScreenState extends State<MessageScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   
-  // 임시 쪽지 데이터
-  static final List<Message> tempReceivedMessages = [
-    Message(
-      messageId: 1, 
-      senderId: 'b-4', 
-      receiverId: 'user123',
-      content: '조용히 해주세요. 책상을 두드리는 소리가 들립니다.', 
-      sentAt: DateTime(2024, 3, 19, 16, 25),
-      isRead: false,
-      isSent: false,
-    ),
-    Message(
-      messageId: 3, 
-      senderId: 'c-2', 
-      receiverId: 'user123',
-      content: '자리 잠시 비울 예정인가요? 책과 노트북이 자리에 있어서 여쭤봅니다.', 
-      sentAt: DateTime(2024, 3, 18, 13, 40),
-      isRead: false,
-      isSent: false,
-    ),
-    Message(
-      messageId: 5, 
-      senderId: 'a-3', 
-      receiverId: 'user123',
-      content: '창가 쪽 냉방이 너무 강한 것 같아요. 관리자에게 문의 부탁드립니다.', 
-      sentAt: DateTime(2024, 3, 15, 10, 15),
-      isRead: false,
-      isSent: false,
-    ),
-    Message(
-      messageId: 7, 
-      senderId: 'd-1', 
-      receiverId: 'user123',
-      content: '전화 통화는 밖에서 부탁드립니다.', 
-      sentAt: DateTime(2024, 3, 13, 14, 22),
-      isRead: false,
-      isSent: false,
-    ),
-  ];
-  
-  static final List<Message> tempSentMessages = [
-    Message(
-      messageId: 2, 
-      senderId: 'user123',
-      receiverId: 'b-1',
-      content: '죄송합니다. 앞으로 조심하겠습니다.', 
-      sentAt: DateTime(2024, 3, 19, 16, 32),
-      isRead: true,
-      isSent: true,
-    ),
-    Message(
-      messageId: 4, 
-      senderId: 'user123',
-      receiverId: 'c-2',
-      content: '네, 잠시 화장실 다녀오겠습니다. 10분 내로 돌아올게요.', 
-      sentAt: DateTime(2024, 3, 18, 13, 45),
-      isRead: true,
-      isSent: true,
-    ),
-    Message(
-      messageId: 6, 
-      senderId: 'user123',
-      receiverId: 'a-3',
-      content: '저도 그렇게 느꼈어요. 안내데스크에 말씀드렸습니다.', 
-      sentAt: DateTime(2024, 3, 15, 10, 20),
-      isRead: true,
-      isSent: true,
-    ),
-    Message(
-      messageId: 8, 
-      senderId: 'user123',
-      receiverId: 'd-5',
-      content: '앞자리 학생분 노트북 소리가 너무 큰데 줄여주실 수 있을까요?', 
-      sentAt: DateTime(2024, 3, 12, 11, 5),
-      isRead: true,
-      isSent: true,
-    ),
-  ];
+  // 임시 데이터 제거 - API로 가져오는 데이터 사용
+  bool isLoading = false;
+  List<Message> receivedMessages = [];
+  List<Message> sentMessages = [];
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    // 화면 진입 시에는 읽음 처리하지 않음
+    _loadMessages(); // 서버에서 메시지 로드
+  }
+  
+  // 서버에서 메시지 데이터 로드
+  Future<void> _loadMessages() async {
+    setState(() {
+      isLoading = true;
+    });
+    
+    try {
+      // 사용자 토큰 가져오기
+      final token = await UserService.getToken();
+      if (token == null) {
+        throw Exception('로그인이 필요합니다');
+      }
+      
+      // 백엔드 API URL
+      final baseUrl = '${ApiConfig.baseUrl}';
+      
+      // 메시지 API 호출
+      final response = await http.get(
+        Uri.parse('$baseUrl/messages'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      );
+      
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          final List<dynamic> messagesJson = data['data'];
+          final String currentUserId = await _getCurrentUserId();
+          
+          // 정적 리스트 업데이트
+          MyPageScreen.tempMessages = messagesJson.map((json) {
+            return Message.fromJson(json, currentUserId);
+          }).toList();
+          
+          // 받은 메시지와 보낸 메시지 구분
+          setState(() {
+            receivedMessages = MyPageScreen.tempMessages
+                .where((message) => !message.isSent)
+                .toList();
+                
+            sentMessages = MyPageScreen.tempMessages
+                .where((message) => message.isSent)
+                .toList();
+                
+            isLoading = false;
+          });
+        } else {
+          setState(() {
+            isLoading = false;
+          });
+        }
+      } else {
+        setState(() {
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('메시지 로딩 오류: $e');
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+  
+  // 현재 사용자 ID 가져오기
+  Future<String> _getCurrentUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('user_id') ?? '';
   }
 
   @override
   void dispose() {
-    // _markAllAsRead() 호출 제거
     _tabController.dispose();
     super.dispose();
   }
 
   // 모든 받은 쪽지 읽음 처리 함수
   void _markAllAsRead() {
-    // 실제 구현에서는 API 호출하여 서버에 읽음 상태 업데이트 필요
-    for (int i = 0; i < tempReceivedMessages.length; i++) {
-      final message = tempReceivedMessages[i];
-      tempReceivedMessages[i] = Message(
-        messageId: message.messageId,
-        senderId: message.senderId,
-        receiverId: message.receiverId,
-        content: message.content,
-        sentAt: message.sentAt,
-        isRead: true,
-        isSent: message.isSent,
-      );
-    }
+    // 백엔드 API 호출 (구현 시)
+    _markMessagesAsReadApi();
     
-    // 마이페이지의 쪽지도 읽음 처리 (필요시)
-    for (int i = 0; i < MyPageScreen.tempMessages.length; i++) {
-      final message = MyPageScreen.tempMessages[i];
-      if (!message.isSent) { // 받은 쪽지만 처리
-        MyPageScreen.tempMessages[i] = Message(
+    // UI 업데이트
+    setState(() {
+      // 메시지 로컬 상태 업데이트
+      for (int i = 0; i < receivedMessages.length; i++) {
+        final message = receivedMessages[i];
+        receivedMessages[i] = Message(
           messageId: message.messageId,
           senderId: message.senderId,
           receiverId: message.receiverId,
@@ -135,6 +126,41 @@ class _MessageScreenState extends State<MessageScreen> with SingleTickerProvider
           isSent: message.isSent,
         );
       }
+      
+      // 마이페이지 메시지 상태 업데이트
+      for (int i = 0; i < MyPageScreen.tempMessages.length; i++) {
+        final message = MyPageScreen.tempMessages[i];
+        if (!message.isSent) { // 받은 쪽지만 처리
+          MyPageScreen.tempMessages[i] = Message(
+            messageId: message.messageId,
+            senderId: message.senderId,
+            receiverId: message.receiverId,
+            content: message.content,
+            sentAt: message.sentAt,
+            isRead: true,
+            isSent: message.isSent,
+          );
+        }
+      }
+    });
+  }
+  
+  // 백엔드 API를 통해 모든 메시지 읽음 처리
+  Future<void> _markMessagesAsReadApi() async {
+    try {
+      final token = await UserService.getToken();
+      if (token != null) {
+        // 백엔드 API 호출
+        final baseUrl = '${ApiConfig.baseUrl}';
+        await http.post(
+          Uri.parse('$baseUrl/messages/read-all'),
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        );
+      }
+    } catch (e) {
+      print('메시지 읽음 처리 오류: $e');
     }
   }
 
@@ -143,12 +169,15 @@ class _MessageScreenState extends State<MessageScreen> with SingleTickerProvider
     // 보낸 쪽지는 읽음 처리하지 않음
     if (message.isSent) return;
     
-    // 실제 구현에서는 API 호출하여 서버에 읽음 상태 업데이트 필요
+    // 백엔드 API 호출 (구현 시)
+    _markMessageAsReadApi(message.messageId);
+    
+    // UI 업데이트
     setState(() {
-      // 현재 화면의 메시지 읽음 처리
-      for (int i = 0; i < tempReceivedMessages.length; i++) {
-        if (tempReceivedMessages[i].messageId == message.messageId) {
-          tempReceivedMessages[i] = Message(
+      // 현재 화면의 메시지 상태 업데이트
+      for (int i = 0; i < receivedMessages.length; i++) {
+        if (receivedMessages[i].messageId == message.messageId) {
+          receivedMessages[i] = Message(
             messageId: message.messageId,
             senderId: message.senderId,
             receiverId: message.receiverId,
@@ -161,7 +190,7 @@ class _MessageScreenState extends State<MessageScreen> with SingleTickerProvider
         }
       }
       
-      // 마이페이지의 메시지도 읽음 처리
+      // 마이페이지의 메시지 상태 업데이트
       for (int i = 0; i < MyPageScreen.tempMessages.length; i++) {
         if (MyPageScreen.tempMessages[i].messageId == message.messageId && 
             !MyPageScreen.tempMessages[i].isSent) {
@@ -178,6 +207,25 @@ class _MessageScreenState extends State<MessageScreen> with SingleTickerProvider
         }
       }
     });
+  }
+  
+  // 백엔드 API를 통해 개별 메시지 읽음 처리
+  Future<void> _markMessageAsReadApi(int messageId) async {
+    try {
+      final token = await UserService.getToken();
+      if (token != null) {
+        // 백엔드 API 호출
+        final baseUrl = '${ApiConfig.baseUrl}';
+        await http.post(
+          Uri.parse('$baseUrl/messages/$messageId/read'),
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        );
+      }
+    } catch (e) {
+      print('메시지 읽음 처리 오류: $e');
+    }
   }
 
   void _showMessageDetail(BuildContext context, Message message) {
@@ -488,15 +536,17 @@ class _MessageScreenState extends State<MessageScreen> with SingleTickerProvider
             ],
           ),
         ),
-        body: TabBarView(
-          controller: _tabController,
-          children: [
-            // 받은 쪽지
-            _buildMessageList(tempReceivedMessages),
-            // 보낸 쪽지
-            _buildMessageList(tempSentMessages),
-          ],
-        ),
+        body: isLoading 
+          ? Center(child: CircularProgressIndicator())
+          : TabBarView(
+            controller: _tabController,
+            children: [
+              // 받은 쪽지
+              _buildMessageList(receivedMessages),
+              // 보낸 쪽지
+              _buildMessageList(sentMessages),
+            ],
+          ),
         floatingActionButton: FloatingActionButton(
           onPressed: () => _showNewMessageDialog(context),
           backgroundColor: AppTheme.primaryColor,

@@ -1,6 +1,7 @@
 package com.shhtudy.backend.controller;
 
 import com.shhtudy.backend.dto.SignUpRequestDto;
+import com.shhtudy.backend.dto.UserProfileResponseDto;
 import com.shhtudy.backend.global.response.ApiResponse;
 import com.shhtudy.backend.service.FirebaseAuthService;
 import com.shhtudy.backend.service.UserService;
@@ -37,6 +38,17 @@ public class UserController {
                 new ApiResponse<>(true, "회원가입 완료!", null)
         );
     }
+    
+    @Operation(summary = "사용자 프로필 조회", description = "현재 로그인한 사용자의 프로필을 조회합니다.")
+    @GetMapping("/profile")
+    public ResponseEntity<ApiResponse<UserProfileResponseDto>> getUserProfile(@RequestHeader("Authorization") String authorizationHeader) {
+        String token = authorizationHeader.replace("Bearer ", "");
+        String uid = firebaseAuthService.verifyIdToken(token);
+        
+        UserProfileResponseDto profile = userService.getUserProfile(uid);
+        return ResponseEntity.ok(ApiResponse.success(profile, "프로필 조회 성공"));
+    }
+    
     @Operation(summary = "(임시)사용자 확인", description = "현재 로그인한 사용자를 확인합니다.")
     @GetMapping("/me")
     public ApiResponse<String> getMyUid(@RequestHeader("Authorization") String authorizationHeader) {

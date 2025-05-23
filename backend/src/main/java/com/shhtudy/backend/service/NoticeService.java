@@ -71,4 +71,37 @@ public class NoticeService {
 
         noticeReadRepository.save(noticeRead);
     }
+
+    @Transactional
+    public void markAllAsRead(String firebaseUid) {
+        // 1. 사용자 조회
+        User user = userRepository.findById(firebaseUid)
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+
+        // 2. 모든 공지사항 조회
+        List<Notice> allNotices = noticeRepository.findAllByOrderByCreatedAtDesc();
+
+        // 3. 이미 읽은 공지사항 ID 목록 조회
+        List<NoticeRead> existingReads = noticeReadRepository.findAllByUser(user);
+        Set<Long> readNoticeIds = existingReads.stream()
+                .map(nr -> nr.getNotice().getId())
+                .collect(Collectors.toSet());
+
+        // 4. 읽지 않은 공지사항들에 대해 읽음 기록 생성
+        List<NoticeRead> newReads = allNotices.stream()
+                .filter(notice -> !readNoticeIds.contains(notice.getId()))
+                .map(notice -> {
+                    NoticeRead noticeRead = new NoticeRead();
+                    noticeRead.setUser(user);
+                    noticeRead.setNotice(notice);
+                    noticeRead.setReadAt(LocalDateTime.now());
+                    return noticeRead;
+                })
+                .collect(Collectors.toList());
+
+        // 5. 새로운 읽음 기록들 저장
+        if (!newReads.isEmpty()) {
+            noticeReadRepository.saveAll(newReads);
+        }
+    }
 }

@@ -1,6 +1,7 @@
 package com.shhtudy.backend.service;
 
 import com.shhtudy.backend.dto.SignUpRequestDto;
+import com.shhtudy.backend.dto.UserProfileResponseDto;
 import com.shhtudy.backend.entity.User;
 import com.shhtudy.backend.exception.CustomException;
 import com.shhtudy.backend.exception.code.ErrorCode;
@@ -22,7 +23,8 @@ public class UserService {
 
     @Transactional
     public void signUp(SignUpRequestDto request, String firebaseUid) {
-        logger.info("회원가입 시작 - firebaseUid: {}, phoneNumber: {}", firebaseUid, request.getPhoneNumber());
+        logger.info("회원가입 시작 - firebaseUid: {}, phoneNumber: {}, nickname: {}", 
+                firebaseUid, request.getPhoneNumber(), request.getNickname());
         
         try {
             // 1. firebaseUid 중복 확인
@@ -67,5 +69,48 @@ public class UserService {
             logger.error("회원가입 중 예외 발생: {}", e.getMessage(), e);
             throw e; // 예외를 다시 던져서 GlobalExceptionHandler에서 처리하도록 함
         }
+    }
+    
+    /**
+     * 사용자 프로필 조회
+     */
+    @Transactional(readOnly = true)
+    public UserProfileResponseDto getUserProfile(String firebaseUid) {
+        // 1. 사용자 조회
+        User user = userRepository.findByFirebaseUid(firebaseUid)
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        
+        // 2. 응답 DTO 생성 및 반환
+        UserProfileResponseDto dto = new UserProfileResponseDto();
+        dto.setUserId(user.getFirebaseUid());
+        dto.setName(user.getName());
+        dto.setNickname(user.getNickname());
+        dto.setGrade(user.getGrade().name());
+        dto.setRemainingTime(user.getRemainingTime());
+        dto.setAverageDecibel(user.getAverageDecibel());
+        dto.setNoiseOccurrence(user.getNoiseOccurrence());
+        dto.setMannerScore(user.getMannerScore());
+        dto.setPoints(user.getPoints());
+        dto.setPhoneNumber(user.getPhoneNumber());
+        
+        // 3. 현재 좌석 정보 확인
+        if (user.getCurrentSeat() != null) {
+            dto.setCurrentSeat(user.getCurrentSeat().getLocationCode());
+        }
+        
+        return dto;
+    }
+    
+    /**
+     * 로그아웃 처리
+     */
+    @Transactional
+    public void logout(String firebaseUid) {
+        // 1. 사용자 조회
+        User user = userRepository.findByFirebaseUid(firebaseUid)
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        
+        // 2. 로그아웃 처리 (필요한 로직 추가)
+        logger.info("로그아웃 성공 - firebaseUid: {}", firebaseUid);
     }
 }

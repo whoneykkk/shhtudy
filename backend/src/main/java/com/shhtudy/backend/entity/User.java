@@ -30,7 +30,9 @@ public class User {
 
     private int remainingTime = 0;
 
-    private int mannerScore = 150;
+    private int mannerScore = 100;
+
+    private int points = 500;
 
     @Enumerated(EnumType.STRING)     // enum 값을 문자열로 저장
     @Column(columnDefinition = "VARCHAR(10)")  // 명시적으로 컬럼 타입과 길이 지정

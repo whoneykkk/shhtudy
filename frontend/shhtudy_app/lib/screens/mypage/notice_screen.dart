@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import 'my_page_screen.dart';
+import '../../config/api_config.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import '../../services/user_service.dart';
+import '../../services/notice_service.dart';
+import '../../services/alert_service.dart';
 
 class NoticeScreen extends StatefulWidget {
   const NoticeScreen({super.key});
@@ -10,66 +16,47 @@ class NoticeScreen extends StatefulWidget {
 }
 
 class _NoticeScreenState extends State<NoticeScreen> {
-  // 임시 공지사항 데이터 - 실제로는 API로 가져온 데이터 사용 예정
-  static final List<Notice> tempNotices = [
-    Notice(
-      id: 1, 
-      title: '시스템 점검 안내', 
-      content: '안녕하세요. Shh-tudy 입니다.\n\n서비스 안정화를 위한 시스템 점검이 진행될 예정입니다.\n\n점검 일시: 2024년 3월 20일 02:00 ~ 06:00\n점검 내용: 서버 안정화 및 성능 개선\n\n더 나은 서비스를 제공하도록 하겠습니다.\n감사합니다.',
-      createdAt: DateTime(2024, 3, 19),
-      isRead: false,
-    ),
-    Notice(
-      id: 2, 
-      title: '신규 기능 업데이트', 
-      content: '안녕하세요. Shh-tudy 입니다.\n\n새로운 기능이 추가되었습니다.\n\n1. 실시간 소음 알림\n2. 좌석 이용 통계\n3. UI/UX 개선\n\n많은 이용 부탁드립니다.\n감사합니다.',
-      createdAt: DateTime(2024, 3, 15),
-      isRead: false,
-    ),
-    Notice(
-      id: 3, 
-      title: '좌석 예약 시스템 개선 안내', 
-      content: '안녕하세요. Shh-tudy 입니다.\n\n좌석 예약 시스템이 개선되었습니다.\n\n- 선호 좌석 등록 기능\n- 예약 자동 연장 기능\n- 빠른 좌석 변경 기능\n\n더 편리한 서비스로 찾아뵙겠습니다.\n감사합니다.',
-      createdAt: DateTime(2024, 3, 10),
-      isRead: false,
-    ),
-    Notice(
-      id: 4, 
-      title: '소음 측정 알고리즘 개선', 
-      content: '안녕하세요. Shh-tudy 입니다.\n\n소음 측정 알고리즘이 개선되었습니다.\n\n- 더 정확한 소음 레벨 측정\n- 소음 패턴 분석 기능 추가\n- 개인화된 소음 허용 범위 설정\n\n더 쾌적한 스터디 환경을 제공하겠습니다.\n감사합니다.',
-      createdAt: DateTime(2024, 3, 5),
-      isRead: false,
-    ),
-    Notice(
-      id: 5, 
-      title: '앱 버전 업데이트 안내 (v1.2.0)', 
-      content: '안녕하세요. Shh-tudy 입니다.\n\n앱 버전이 업데이트 되었습니다.\n\n- 성능 개선 및 버그 수정\n- 디자인 리뉴얼\n- 신규 통계 기능 추가\n\n더 나은 서비스로 찾아뵙겠습니다.\n감사합니다.',
-      createdAt: DateTime(2024, 2, 28),
-      isRead: false,
-    ),
-  ];
-
+  // 임시 데이터 제거하고 MyPageScreen의 데이터 참조
+  bool isLoading = false;
+  
   @override
   void initState() {
     super.initState();
-    // 화면 진입 시에는 읽음 처리하지 않음
+    // 화면 진입 시 최신 공지사항 로드
+    _loadNotices();
+  }
+  
+  // 공지사항 데이터를 서버에서 로드
+  Future<void> _loadNotices() async {
+    setState(() {
+      isLoading = true;
+    });
+    
+    try {
+      // NoticeService를 사용하여 공지사항 로드
+      final notices = await NoticeService.getAllNotices();
+      
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('공지사항 로딩 오류: $e');
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
+    }
   }
 
   // 모든 공지사항 읽음 처리 함수
   void _markAllAsRead() {
-    // 실제 구현에서는 API 호출하여 서버에 읽음 상태 업데이트 필요
-    for (int i = 0; i < tempNotices.length; i++) {
-      final notice = tempNotices[i];
-      tempNotices[i] = Notice(
-        id: notice.id,
-        title: notice.title,
-        content: notice.content,
-        createdAt: notice.createdAt,
-        isRead: true,
-      );
-    }
+    // NoticeService를 사용하여 모든 공지사항 읽음 처리
+    NoticeService.markAllAsRead();
     
-    // 마이페이지의 공지사항도 읽음 처리
+    // UI 상태 업데이트 (기존 로직과의 호환성 유지)
     for (int i = 0; i < MyPageScreen.tempNotices.length; i++) {
       final notice = MyPageScreen.tempNotices[i];
       MyPageScreen.tempNotices[i] = Notice(
@@ -80,27 +67,19 @@ class _NoticeScreenState extends State<NoticeScreen> {
         isRead: true,
       );
     }
+    
+    // 알림 상태 업데이트
+    AlertService.updateAlertStatus();
   }
 
   // 개별 공지사항 읽음 처리 함수
   void _markAsRead(Notice notice) {
-    // 실제 구현에서는 API 호출하여 서버에 읽음 상태 업데이트 필요
+    // NoticeService를 사용하여 읽음 처리
+    NoticeService.markAsRead(notice.id);
+    
+    // UI 상태 업데이트 (기존 로직과의 호환성 유지)
     setState(() {
-      // 현재 화면의 공지사항 읽음 처리
-      for (int i = 0; i < tempNotices.length; i++) {
-        if (tempNotices[i].id == notice.id) {
-          tempNotices[i] = Notice(
-            id: notice.id,
-            title: notice.title,
-            content: notice.content,
-            createdAt: notice.createdAt,
-            isRead: true,
-          );
-          break;
-        }
-      }
-      
-      // 마이페이지의 공지사항도 읽음 처리
+      // 마이페이지의 공지사항 읽음 처리
       for (int i = 0; i < MyPageScreen.tempNotices.length; i++) {
         if (MyPageScreen.tempNotices[i].id == notice.id) {
           MyPageScreen.tempNotices[i] = Notice(
@@ -215,11 +194,13 @@ class _NoticeScreenState extends State<NoticeScreen> {
             ),
           ),
         ),
-        body: ListView.builder(
+        body: isLoading
+            ? Center(child: CircularProgressIndicator())
+            : ListView.builder(
           padding: const EdgeInsets.all(16),
-          itemCount: tempNotices.length,
+          itemCount: MyPageScreen.tempNotices.length,
           itemBuilder: (context, index) {
-            final notice = tempNotices[index];
+            final notice = MyPageScreen.tempNotices[index];
             return Container(
               margin: const EdgeInsets.only(bottom: 12),
               decoration: BoxDecoration(

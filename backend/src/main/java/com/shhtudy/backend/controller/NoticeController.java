@@ -42,4 +42,16 @@ public class NoticeController {
 
         return ResponseEntity.ok(ApiResponse.success(null, "읽음 처리 완료"));
     }
+
+    @PostMapping("/read-all")
+    public ResponseEntity<ApiResponse<Void>> readAllNotices(
+            @RequestHeader("Authorization") String authorizationHeader
+    ){
+        String idToken = authorizationHeader.replace("Bearer ", "");
+        String userId = firebaseAuthService.verifyIdToken(idToken);
+
+        noticeService.markAllAsRead(userId);
+
+        return ResponseEntity.ok(ApiResponse.success(null, "모든 공지사항 읽음 처리 완료"));
+    }
 }

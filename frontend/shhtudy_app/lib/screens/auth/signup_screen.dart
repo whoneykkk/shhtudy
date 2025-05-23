@@ -18,6 +18,7 @@ class SignUpScreen extends StatefulWidget {
 
 class _SignUpScreenState extends State<SignUpScreen> {
   final TextEditingController nameController = TextEditingController();
+  final TextEditingController userIdController = TextEditingController();
   final TextEditingController phoneController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController confirmPasswordController = TextEditingController();
@@ -110,8 +111,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
       }
       
       // 입력값 유효성 검사
-      if (nameController.text.isEmpty || phoneController.text.isEmpty || 
-          passwordController.text.isEmpty || confirmPasswordController.text.isEmpty) {
+      if (nameController.text.isEmpty || userIdController.text.isEmpty ||
+          phoneController.text.isEmpty || passwordController.text.isEmpty || 
+          confirmPasswordController.text.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('모든 필드를 입력해주세요.')),
         );
@@ -151,6 +153,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           },
           body: jsonEncode({
             'name': nameController.text,
+            'nickname': userIdController.text,
             'phoneNumber': phoneController.text,
             'password': passwordController.text,
             'confirmPassword': confirmPasswordController.text,
@@ -353,6 +356,26 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     contentPadding: const EdgeInsets.all(16),
                     prefixIcon: Icon(
                       Icons.person,
+                      color: AppTheme.primaryColor,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              // 사용자 닉네임 입력
+              Container(
+                decoration: BoxDecoration(
+                  color: AppTheme.accentColor,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: TextField(
+                  controller: userIdController,
+                  decoration: InputDecoration(
+                    hintText: '닉네임을 입력해주세요 (2자 이상)',
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.all(16),
+                    prefixIcon: Icon(
+                      Icons.account_circle,
                       color: AppTheme.primaryColor,
                     ),
                   ),

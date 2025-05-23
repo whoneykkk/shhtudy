@@ -8,6 +8,9 @@ import 'dart:math' as math;
 import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../../models/user_profile.dart';
+import '../../services/user_service.dart';
+import '../../config/api_config.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -61,16 +64,24 @@ class _LoginScreenState extends State<LoginScreen> {
           default:
             errorMessage = '로그인 오류: ${e.code}';
         }
-      }
-      // 오류 메시지를 컨텍스트 대신 변수에 저장 (컨텍스트는 이 비동기 함수에서 사용 불가)
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(errorMessage)),
-      );
+      }     
+// 오류 메시지를 컨텍스트 대신 변수에 저장 (컨텍스트는 이 비동기 함수에서 사용 불가)
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMessage)),
+        );
       return null;
     }
   }
 
   Future<void> login() async {
+    // 입력값 검증
+    if (phoneController.text.isEmpty || passwordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('전화번호와 비밀번호를 모두 입력해주세요.')),
+      );
+      return;
+    }
+    
     setState(() {
       isLoading = true;
     });
@@ -85,10 +96,7 @@ class _LoginScreenState extends State<LoginScreen> {
         setState(() {
           isLoading = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('로그인에 실패했습니다. 아이디와 비밀번호를 확인해주세요.')),
-        );
-        return;
+        return; // 에러 메시지는 _signInWithFirebase에서 처리
       }
       
       // 토큰 디버깅
@@ -96,14 +104,13 @@ class _LoginScreenState extends State<LoginScreen> {
       print('토큰 길이: ${firebaseToken.length}');
       print('토큰 미리보기: ${firebaseToken.substring(0, math.min(20, firebaseToken.length))}...');
       
-      // 모바일 테스트용 IP 주소 사용
-      // 실제 디바이스: 'http://192.168.219.118:8080/auth/login'
-      // 안드로이드 에뮬레이터: 'http://10.0.2.2:8080/auth/login'
-      final url = Uri.parse('http://10.0.2.2:8080/auth/login');
-      print('로그인 요청 URL: $url');
+      // 마지막으로 사용한 전화번호 저장
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('last_phone_number', phoneController.text);
       
       // 백엔드 서버로 요청 보내기
-      print('백엔드 서버로 로그인 요청 시작');
+      final url = Uri.parse('${ApiConfig.baseUrl}/auth/login');
+      print('로그인 요청 URL: $url');
       
       try {
         final response = await http.post(
@@ -127,72 +134,43 @@ class _LoginScreenState extends State<LoginScreen> {
         print('로그인 요청 완료');
         print('응답 상태 코드: ${response.statusCode}');
         print('응답 본문: "${response.body}"');
-        print('응답 헤더: ${response.headers}');
 
+        if (!mounted) return; // 위젯이 아직 마운트 상태인지 확인
+        
         setState(() {
           isLoading = false;
         });
 
-        try {
-          // 응답 본문이 비어 있지 않은 경우만 파싱
-          if (response.body.isNotEmpty) {
-            final data = jsonDecode(response.body);
+        if (response.body.isNotEmpty) {
+          final data = jsonDecode(response.body);
+          
+          if (response.statusCode == 200 && data['success'] == true && data['data'] != null) {
+            // 로그인 성공
+            final userData = data['data'];
             
-            if (response.statusCode == 200 && data['success'] == true && data['data'] != null) {
-              // 로그인 성공
-              final userData = data['data'];
-              
-              // 토큰 저장
-              final prefs = await SharedPreferences.getInstance();
-              await prefs.setString('auth_token', userData['token']);
-              await prefs.setString('firebase_token', firebaseToken); // Firebase 토큰도 저장
-              await prefs.setString('user_id', userData['userId']);
-              await prefs.setString('user_name', userData['name']);
-              
-              if (isAutoLogin) {
-                await prefs.setBool('auto_login', true);
-              }
-              
-              print('로그인 성공: ${data['message']}');
-              
-              // 홈 화면으로 이동
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => const HomeScreen()),
-              );
-            } else {
-              // 데이터가 예상한 형식이 아니거나 성공이 아닌 경우
-              final message = data['message'] ?? "알 수 없는 오류가 발생했습니다.";
-              print('로그인 실패: $message');
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('로그인 실패: $message')),
-              );
-              
-              // Firebase 로그아웃 처리
-              try {
-                await _auth.signOut();
-              } catch (e) {
-                print('Firebase 로그아웃 오류: $e');
-              }
+            // 토큰 저장
+            await UserService.saveToken(userData['token']);
+            await prefs.setString('firebase_token', firebaseToken);
+            await prefs.setString('user_id', userData['userId']);
+            await prefs.setString('user_name', userData['name']);
+            
+            if (isAutoLogin) {
+              await prefs.setBool('auto_login', true);
             }
-          } else if (response.statusCode == 401) {
-            // 401 Unauthorized 오류 특별 처리
-            print('로그인 실패: 인증 오류 (401)');
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('로그인 실패: 아이디 또는 비밀번호가 일치하지 않습니다.')),
+
+            print('로그인 성공: ${data['message']}');
+            
+            // 홈 화면으로 이동
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const HomeScreen()),
             );
-            
-            // Firebase 로그아웃 처리
-            try {
-              await _auth.signOut();
-            } catch (e) {
-              print('Firebase 로그아웃 오류: $e');
-            }
           } else {
-            // 응답 본문이 비어 있는 경우
-            print('로그인 실패: 빈 응답 (${response.statusCode})');
+            // 데이터가 예상한 형식이 아니거나 성공이 아닌 경우
+            final message = data['message'] ?? "알 수 없는 오류가 발생했습니다.";
+            print('로그인 실패: $message');
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('로그인 실패: 서버 응답이 비어 있습니다 (${response.statusCode})')),
+              SnackBar(content: Text('로그인 실패: $message')),
             );
             
             // Firebase 로그아웃 처리
@@ -202,23 +180,35 @@ class _LoginScreenState extends State<LoginScreen> {
               print('Firebase 로그아웃 오류: $e');
             }
           }
-        } catch (e) {
-          // JSON 파싱 오류 등의 예외 처리
-          print('응답 처리 오류: $e, 상태 코드: ${response.statusCode}, 응답 본문: "${response.body}"');
+        } else if (response.statusCode == 401) {
+          // 401 Unauthorized 오류 특별 처리
+          print('로그인 실패: 인증 오류 (401)');
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('로그인 실패: 서버 응답 처리 중 오류 (${response.statusCode})')),
+            const SnackBar(content: Text('로그인 실패: 아이디 또는 비밀번호가 일치하지 않습니다.')),
           );
           
           // Firebase 로그아웃 처리
           try {
             await _auth.signOut();
-          } catch (logoutError) {
-            print('Firebase 로그아웃 오류: $logoutError');
+          } catch (e) {
+            print('Firebase 로그아웃 오류: $e');
+          }
+        } else {
+          // 기타 응답 오류
+          print('로그인 실패: 서버 응답 오류 (${response.statusCode})');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('로그인 실패: 서버 오류 (${response.statusCode})')),
+          );
+          
+          // Firebase 로그아웃 처리
+          try {
+            await _auth.signOut();
+          } catch (e) {
+            print('Firebase 로그아웃 오류: $e');
           }
         }
       } catch (e) {
-        // 네트워크 오류 등 HTTP 요청 자체의 예외 처리
-        print('로그인 요청 중 오류 발생: $e');
+        if (!mounted) return;
         
         setState(() {
           isLoading = false;
@@ -245,32 +235,16 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       }
     } catch (e) {
-      // 네트워크 오류 등 HTTP 요청 자체의 예외 처리
-      print('로그인 요청 중 오류 발생: $e');
+      if (!mounted) return;
       
       setState(() {
         isLoading = false;
       });
       
-      // 사용자에게 보여줄 오류 메시지 결정
-      String errorMessage = '네트워크 오류가 발생했습니다. 다시 시도해주세요.';
-      if (e is TimeoutException) {
-        errorMessage = '서버 응답 시간이 초과되었습니다. 나중에 다시 시도해주세요.';
-      } else if (e.toString().contains('Connection refused') || 
-                e.toString().contains('Connection closed')) {
-        errorMessage = '서버 연결에 실패했습니다. 서버가 실행 중인지 확인해주세요.';
-      }
-      
+      print('예상치 못한 오류: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(errorMessage)),
+        SnackBar(content: Text('로그인 중 오류가 발생했습니다: $e')),
       );
-      
-      // Firebase 로그아웃 처리
-      try {
-        await _auth.signOut();
-      } catch (logoutError) {
-        print('Firebase 로그아웃 오류: $logoutError');
-      }
     }
   }
 
