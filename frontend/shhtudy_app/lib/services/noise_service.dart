@@ -76,8 +76,8 @@ class NoiseService {
       throw Exception('소음 로그 조회 실패: ${response.statusCode}');
     } catch (e) {
       print('소음 로그 조회 중 오류: $e');
-      // Mock 데이터 반환 (30일 제한 적용됨)
-      return _getMockNoiseLogs();
+      // 더 이상 Mock 데이터 반환하지 않고 빈 리스트 반환
+      return [];
     }
   }
 
