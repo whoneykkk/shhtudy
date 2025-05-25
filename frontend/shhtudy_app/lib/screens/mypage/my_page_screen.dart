@@ -74,6 +74,7 @@ class Message {
   final DateTime sentAt;
   final bool isRead; // 읽음 여부
   final bool isSent; // 보낸 쪽지 여부 (프론트엔드 표시용)
+  final String counterpartDisplayName; // 상대방 표시명 (백엔드에서 제공)
 
   const Message({
     required this.messageId, 
@@ -83,6 +84,7 @@ class Message {
     required this.sentAt,
     required this.isRead,
     required this.isSent,
+    required this.counterpartDisplayName,
   });
   
   // 날짜 포맷팅
@@ -90,22 +92,58 @@ class Message {
     return '${_twoDigits(sentAt.month)}.${_twoDigits(sentAt.day)} ${_twoDigits(sentAt.hour)}:${_twoDigits(sentAt.minute)}';
   }
 
-  // 보낸/받은 사람 (좌석 ID 표시)
-  String get contactSeatId => isSent ? receiverId : senderId;
+  // 보낸/받은 사람 (좌석 ID 표시) - 백엔드 counterpartDisplayName 사용
+  String get contactSeatId {
+    // 백엔드에서 이미 포맷된 displayName을 받으므로 그대로 사용
+    // 예: "A-3번 (nickname)" 또는 "퇴실한 사용자 (nickname)"
+    return counterpartDisplayName;
+  }
   
   // JSON 데이터로부터 객체 생성 (API 응답 처리용)
   factory Message.fromJson(Map<String, dynamic> json, String currentUserId) {
-    final bool isSentMessage = json['sender_id'] == currentUserId;
+    // 백엔드 MessageListResponseDto 구조에 맞춤
+    // 로그에서 sentByMe로 나타나므로 두 가지 모두 확인
+    final bool isSentMessage = json['sentByMe'] ?? json['isSentByMe'] ?? false;
     
-    return Message(
-      messageId: json['message_id'] ?? 0,
-      senderId: json['sender_id'] ?? '',
-      receiverId: json['receiver_id'] ?? '',
-      content: json['content'] ?? '',
-      sentAt: json['sent_at'] != null ? DateTime.parse(json['sent_at']) : DateTime.now(),
-      isRead: json['is_read'] == 1,
-      isSent: isSentMessage,
+    // 디버깅용 로그 추가
+    print('Message.fromJson - sentByMe: ${json['sentByMe']}, isSentByMe: ${json['isSentByMe']}, 최종값: $isSentMessage');
+    
+    // 디버깅 로그 제거 (성능 개선)
+    
+    // sentAt 파싱 처리 개선
+    DateTime parsedSentAt;
+    try {
+      final sentAtStr = json['sentAt'] ?? '';
+      if (sentAtStr.isNotEmpty) {
+        // "yyyy.MM.dd HH:mm" 형태를 DateTime으로 변환
+        if (sentAtStr.contains('.') && sentAtStr.contains(' ')) {
+          final parts = sentAtStr.split(' ');
+          final datePart = parts[0].replaceAll('.', '-');
+          final timePart = parts[1];
+          parsedSentAt = DateTime.parse('$datePart $timePart:00');
+        } else {
+          parsedSentAt = DateTime.parse(sentAtStr);
+        }
+      } else {
+        parsedSentAt = DateTime.now();
+      }
+    } catch (e) {
+      print('날짜 파싱 오류: ${json['sentAt']}, 오류: $e');
+      parsedSentAt = DateTime.now();
+    }
+    
+    final message = Message(
+      messageId: (json['id'] ?? 0).toInt(), // Long을 int로 변환
+      senderId: isSentMessage ? currentUserId : '', // 보낸 사람이 나면 내 ID, 아니면 빈 문자열
+      receiverId: isSentMessage ? '' : currentUserId, // 받은 사람이 나면 내 ID, 아니면 빈 문자열  
+      content: json['contentPreview'] ?? json['content'] ?? '', // contentPreview 또는 content 사용
+      sentAt: parsedSentAt,
+      isRead: json['isRead'] ?? false,
+      isSent: isSentMessage, // 백엔드의 isSentByMe 값을 그대로 사용
+      counterpartDisplayName: json['counterpartDisplayName'] ?? '알 수 없음',
     );
+    
+    return message;
   }
   
   static String _twoDigits(int n) {
@@ -192,14 +230,35 @@ class _MyPageScreenState extends State<MyPageScreen> {
 
       if (messagesResponse.statusCode == 200) {
         final Map<String, dynamic> messagesData = json.decode(messagesResponse.body);
+        print('MyPageScreen 메시지 API 응답: $messagesData'); // 디버깅용
+        
         if (messagesData['success'] == true && messagesData['data'] != null) {
-          final List<dynamic> messagesJson = messagesData['data'];
+          // 페이지 형태의 응답인지 확인
+          final dynamic responseData = messagesData['data'];
+          List<dynamic> messagesJson;
+          
+          if (responseData is Map && responseData.containsKey('content')) {
+            // 페이지 형태의 응답
+            messagesJson = responseData['content'];
+            print('MyPageScreen 페이지 형태 응답 - 총 메시지 수: ${responseData['totalElements']}');
+          } else if (responseData is List) {
+            // 리스트 형태의 응답
+            messagesJson = responseData;
+          } else {
+            print('MyPageScreen 예상치 못한 응답 형태: ${responseData.runtimeType}');
+            messagesJson = [];
+          }
+          
           final String currentUserId = await _getCurrentUserId();
+          print('MyPageScreen 현재 사용자 ID: $currentUserId'); // 디버깅용
+          print('MyPageScreen 받은 메시지 개수: ${messagesJson.length}'); // 디버깅용
           
           // 정적 리스트 업데이트
           MyPageScreen.tempMessages = messagesJson.map((json) {
             return Message.fromJson(json, currentUserId);
           }).toList();
+          
+          print('MyPageScreen 파싱된 메시지 개수: ${MyPageScreen.tempMessages.length}'); // 디버깅용
         }
       }
 
@@ -534,6 +593,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
               sentAt: message.sentAt,
               isRead: true,
               isSent: message.isSent,
+              counterpartDisplayName: message.counterpartDisplayName,
             );
             break;
           }

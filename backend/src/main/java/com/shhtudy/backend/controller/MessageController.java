@@ -90,5 +90,41 @@ public class MessageController {
         return ResponseEntity.ok(ApiResponse.success(null, "삭제 완료"));
     }
 
+    @Operation(summary = "좌석별 쪽지 전송", description = "특정 좌석에 앉아있는 사용자에게 쪽지를 보냅니다.")
+    @PostMapping("/seats/{seatId}")
+    public ResponseEntity<ApiResponse<String>> sendMessageToSeat(
+            @PathVariable Integer seatId,
+            @RequestBody @Valid MessageSendRequestDto request,
+            @RequestHeader("Authorization") String authorizationHeader) {
+
+        String senderUid = firebaseAuthService.verifyIdToken(authorizationHeader.replace("Bearer ", ""));
+        messageService.sendMessageToSeat(senderUid, seatId, request);
+
+        return ResponseEntity.ok(new ApiResponse<>(true, "쪽지 전송 완료", null));
+    }
+
+    @Operation(summary = "메시지 읽음 처리", description = "특정 메시지를 읽음으로 표시합니다.")
+    @PostMapping("/{messageId}/read")
+    public ResponseEntity<ApiResponse<String>> markMessageAsRead(
+            @PathVariable Long messageId,
+            @RequestHeader("Authorization") String authorizationHeader) {
+
+        String firebaseUid = firebaseAuthService.verifyIdToken(authorizationHeader.replace("Bearer ", ""));
+        messageService.markMessageAsRead(firebaseUid, messageId);
+
+        return ResponseEntity.ok(new ApiResponse<>(true, "읽음 처리 완료", null));
+    }
+
+    @Operation(summary = "모든 메시지 읽음 처리", description = "사용자의 모든 받은 메시지를 읽음으로 표시합니다.")
+    @PostMapping("/read-all")
+    public ResponseEntity<ApiResponse<String>> markAllMessagesAsRead(
+            @RequestHeader("Authorization") String authorizationHeader) {
+
+        String firebaseUid = firebaseAuthService.verifyIdToken(authorizationHeader.replace("Bearer ", ""));
+        messageService.markAllMessagesAsRead(firebaseUid);
+
+        return ResponseEntity.ok(new ApiResponse<>(true, "모든 메시지 읽음 처리 완료", null));
+    }
+
 }
 
