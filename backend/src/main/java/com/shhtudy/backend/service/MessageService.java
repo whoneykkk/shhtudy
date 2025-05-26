@@ -57,7 +57,16 @@ public class MessageService {
     public Page<MessageListResponseDto> getAllMessages(String firebaseUid, String type, Pageable pageable) {
 
         Page<Message> messages = switch (type) {
-            case "received" -> messageRepository.findByReceiverIdAndDeletedByReceiverFalse(firebaseUid, pageable);
+            case "received" -> {
+                Page<Message> receivedMessages = messageRepository.findByReceiverIdAndDeletedByReceiverFalse(firebaseUid, pageable);
+                receivedMessages.forEach(message -> {
+                    if (!message.isRead()) {
+                        message.setRead(true);
+                        messageRepository.save(message);
+                    }
+                });
+                yield receivedMessages;
+            }
             case "sent"     -> messageRepository.findBySenderIdAndDeletedBySenderFalse(firebaseUid, pageable);
             default         -> messageRepository.findAllVisibleMessages(firebaseUid, pageable);
         };
