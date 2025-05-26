@@ -4,8 +4,10 @@ import '../mypage/my_page_screen.dart';
 import '../../services/alert_service.dart';
 import '../../services/seat_service.dart';
 import '../../services/user_service.dart';
+import '../../services/message_service.dart';
 import '../../models/user_profile.dart';
 import '../../widgets/profile_button.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 // 좌석 상태 enum
 enum SeatStatus {
@@ -36,9 +38,17 @@ class SeatScreen extends StatefulWidget {
   State<SeatScreen> createState() => _SeatScreenState();
 }
 
+class _MessageConstants {
+  static const String sendSuccess = '좌석에 쪽지를 보냈습니다!';
+  static const String sendFailed = '쪽지 전송에 실패했습니다. 다시 시도해주세요.';
+  static const String seatNotFound = '좌석 정보를 찾을 수 없습니다.';
+  static const String sendError = '쪽지 전송 중 오류가 발생했습니다.';
+}
+
 class _SeatScreenState extends State<SeatScreen> {
   String? currentSeatCode;
   String selectedZone = 'A';
+  String? _cachedUserId;
   final List<String> zones = ['A', 'B', 'C', 'D'];
   final TextEditingController _messageController = TextEditingController();
   bool hasUnreadAlerts = false;
@@ -52,10 +62,16 @@ class _SeatScreenState extends State<SeatScreen> {
   @override
   void initState() {
     super.initState();
-    _checkUnreadAlerts();
-    _loadUserProfile();
-    _loadAccessibleZones();
-    _loadSeatsData();
+    _initializeData();
+  }
+
+  // 데이터 초기화 (순서 중요)
+  Future<void> _initializeData() async {
+    _cachedUserId = await _getCurrentUserId();
+    await _checkUnreadAlerts();
+    await _loadUserProfile(); // 먼저 사용자 프로필 로드
+    await _loadAccessibleZones(); // 그 다음 접근 가능한 구역 로드 (사용자 등급 기반)
+    await _loadSeatsData(); // 마지막으로 좌석 데이터 로드
   }
 
   // 사용자 프로필 로드
@@ -80,9 +96,15 @@ class _SeatScreenState extends State<SeatScreen> {
       if (mounted) {
         setState(() {
           accessibleZones = zones;
-          // 접근 가능한 첫 번째 구역을 선택
-          if (zones.isNotEmpty && !zones.contains(selectedZone)) {
-            selectedZone = zones.first;
+          // 사용자 등급에 맞는 기본 구역 설정
+          if (zones.isNotEmpty) {
+            // 사용자 등급에 따른 기본 구역 선택
+            String defaultZone = _getDefaultZoneForUser();
+            if (zones.contains(defaultZone)) {
+              selectedZone = defaultZone;
+            } else {
+              selectedZone = zones.first; // 접근 가능한 첫 번째 구역
+            }
           }
         });
       }
@@ -91,6 +113,21 @@ class _SeatScreenState extends State<SeatScreen> {
       setState(() {
         accessibleZones = ['A', 'B', 'C', 'D']; // 기본값
       });
+    }
+  }
+
+  // 사용자 등급에 따른 기본 구역 반환
+  String _getDefaultZoneForUser() {
+    if (userProfile?.grade == null) return 'C'; // 기본값
+    
+    switch (userProfile!.grade.toUpperCase()) {
+      case 'SILENT': // A등급 - A구역 우선
+        return 'A';
+      case 'GOOD': // B등급 - B구역 우선
+        return 'B';
+      case 'WARNING': // C등급 - C구역 우선
+      default:
+        return 'C';
     }
   }
 
@@ -128,6 +165,32 @@ class _SeatScreenState extends State<SeatScreen> {
     }
   }
 
+  // 메시지 목록 새로고침 (MessageService 사용)
+  Future<void> _refreshMessagesInMyPage() async {
+    try {
+      final messageDataList = await MessageService.getMessageList();
+      final currentUserId = await _getCurrentUserId();
+      
+      // MyPageScreen의 정적 리스트 업데이트
+      MyPageScreen.tempMessages = messageDataList.map((data) {
+        return Message.fromJson(data, currentUserId);
+      }).toList();
+      
+      print('좌석 화면 메시지 목록 새로고침 완료: ${MyPageScreen.tempMessages.length}개');
+    } catch (e) {
+      print('메시지 목록 새로고침 오류: $e');
+    }
+  }
+
+  // 현재 사용자 ID 가져오기 (초기화 시에만 호출)
+  Future<String> _getCurrentUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('user_id') ?? '';
+  }
+
+  // 캐시된 사용자 ID 반환
+  String get currentUserId => _cachedUserId ?? '';
+
   // 백엔드 상태를 프론트엔드 색상으로 변환
   Color getStatusColor(String status) {
     switch (status.toUpperCase()) {
@@ -154,15 +217,15 @@ class _SeatScreenState extends State<SeatScreen> {
     if (status == 'MY_SEAT') {
       // 내 좌석인 경우 안내 메시지
       _showInfoDialog('내 좌석', '현재 이용 중인 좌석입니다.\n\n좌석 이동이나 해제는 1층 키오스크에서 가능합니다.');
-    } else if (status == 'EMPTY') {
-      // 빈 좌석인 경우 안내 메시지
-      _showInfoDialog('빈 좌석', '사용 가능한 좌석입니다.\n\n좌석 선택은 1층 키오스크에서 가능합니다.');
-    } else if (status != 'EMPTY' && accessible) {
-      // 다른 사용자가 사용 중이고 접근 가능하면 쪽지 보내기
-      _showSendMessageDialog(locationCode);
-    } else if (!accessible) {
-      // 접근 불가능한 좌석
+    } else if (status == 'EMPTY' && !accessible) {
+      // 빈 좌석이면서 접근 불가능한 경우만 접근 제한 메시지
       _showAccessDeniedDialog(seat['accessibilityMessage'] ?? '접근할 수 없는 좌석입니다.');
+    } else if (status == 'EMPTY') {
+      // 빈 좌석이고 접근 가능한 경우
+      _showInfoDialog('빈 좌석', '사용 가능한 좌석입니다.\n\n좌석 선택은 1층 키오스크에서 가능합니다.');
+    } else {
+      // 사용 중인 좌석(SILENT, GOOD, WARNING)은 접근 제한과 관계없이 쪽지 보내기 가능
+      _showSendMessageDialog(locationCode);
     }
   }
 
@@ -206,107 +269,164 @@ class _SeatScreenState extends State<SeatScreen> {
     super.dispose();
   }
 
+  // 스낵바 표시 헬퍼 메서드 추가
+  void _showSnackBar(String message, {bool isError = false}) {
+    if (!mounted) return;
+    
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    // 이전 스낵바 제거
+    scaffoldMessenger.removeCurrentSnackBar();
+    // 새 스낵바 표시
+    scaffoldMessenger.showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? Colors.red : AppTheme.primaryColor,
+      ),
+    );
+  }
+
   void _showSendMessageDialog(String locationCode) {
     _messageController.clear();
+    BuildContext? dialogContext;
     
     showDialog(
       context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          width: 400,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Text(
-                    '$locationCode 좌석에 쪽지 보내기',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    onPressed: () {
-                      _messageController.clear();
-                      Navigator.pop(context);
-                    },
-                    icon: const Icon(Icons.close),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppTheme.accentColor,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: TextField(
-                  controller: _messageController,
-                  maxLines: 4,
-                  decoration: const InputDecoration(
-                    hintText: '조용하게 소통할 내용을 입력하세요...\n예: "펜 빌려주실 수 있나요?", "조용히 해주세요 ㅠㅠ"',
-                    border: InputBorder.none,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () {
-                      _messageController.clear();
-                      Navigator.pop(context);
-                    },
-                    child: Text(
-                      '취소',
-                      style: TextStyle(
-                        color: AppTheme.textColor,
+      builder: (BuildContext context) {
+        dialogContext = context;
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            width: 400,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      '$locationCode 좌석에 쪽지 보내기',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  ElevatedButton(
-                    onPressed: () async {
-                      final message = _messageController.text.trim();
-                      if (message.isNotEmpty) {
+                    const Spacer(),
+                    IconButton(
+                      onPressed: () {
                         _messageController.clear();
                         Navigator.pop(context);
-                        
-                        // TODO: 좌석 ID 기반 쪽지 보내기 API 호출
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('$locationCode 좌석에 쪽지를 보냈습니다! 📩'),
-                            backgroundColor: AppTheme.primaryColor,
-                          ),
-                        );
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primaryColor,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                      },
+                      icon: const Icon(Icons.close),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppTheme.accentColor,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: TextField(
+                    controller: _messageController,
+                    maxLines: 4,
+                    decoration: const InputDecoration(
+                      hintText: '조용하게 소통할 내용을 입력하세요...\n예: "펜 빌려주실 수 있나요?", "조용히 해주세요 ㅠㅠ"',
+                      border: InputBorder.none,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () {
+                        _messageController.clear();
+                        Navigator.pop(context);
+                      },
+                      child: Text(
+                        '취소',
+                        style: TextStyle(
+                          color: AppTheme.textColor,
+                        ),
                       ),
                     ),
-                    child: const Text('보내기'),
-                  ),
-                ],
-              ),
-            ],
+                    const SizedBox(width: 12),
+                    ElevatedButton(
+                      onPressed: () async {
+                        final message = _messageController.text.trim();
+                        if (message.isNotEmpty && dialogContext != null) {
+                          _messageController.clear();
+                          Navigator.pop(dialogContext!);
+                          
+                          // 다이얼로그가 완전히 닫힌 후 API 호출
+                          await Future.delayed(const Duration(milliseconds: 300));
+                          
+                          if (!mounted) return;
+                          
+                          // 좌석 ID 기반 쪽지 보내기 API 호출
+                          try {
+                            // locationCode에서 seatId 찾기
+                            final seatData = currentZoneSeats.firstWhere(
+                              (seat) => seat['locationCode'] == locationCode,
+                              orElse: () => <String, dynamic>{},
+                            );
+                            
+                            if (seatData.isNotEmpty && seatData['seatId'] != null) {
+                              final bool success = await SeatService.sendMessageToSeat(
+                                seatData['seatId'], 
+                                message
+                              );
+                              
+                              if (success) {
+                                // 쪽지 전송 성공 시 MyPageScreen의 메시지 목록 새로고침
+                                await _refreshMessagesInMyPage();
+                                // 알림 상태 업데이트
+                                await AlertService.updateAlertStatus();
+                                
+                                if (mounted) {
+                                  _showSnackBar(_MessageConstants.sendSuccess);
+                                }
+                              } else {
+                                if (mounted) {
+                                  _showSnackBar(_MessageConstants.sendFailed, isError: true);
+                                }
+                              }
+                            } else {
+                              if (mounted) {
+                                _showSnackBar(_MessageConstants.seatNotFound, isError: true);
+                              }
+                            }
+                          } catch (e) {
+                            print('쪽지 전송 오류: $e');
+                            if (mounted) {
+                              _showSnackBar(_MessageConstants.sendError, isError: true);
+                            }
+                          }
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryColor,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: const Text('보내기'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -641,8 +761,6 @@ class _SeatScreenState extends State<SeatScreen> {
                                       
                                       return GestureDetector(
                                         onTap: () => _handleSeatTap(seat),
-                                        child: Opacity(
-                                          opacity: isAccessible ? 1.0 : 0.5,
                                           child: Container(
                                             decoration: BoxDecoration(
                                               color: getStatusColor(seat['status']),
@@ -651,11 +769,6 @@ class _SeatScreenState extends State<SeatScreen> {
                                                   ? Border.all(
                                                       color: const Color(0xFF5E6198),
                                                       width: 4,
-                                                    )
-                                                  : !isAccessible
-                                                      ? Border.all(
-                                                          color: Colors.red.withOpacity(0.5),
-                                                          width: 2,
                                                         )
                                                       : null,
                                             ),
@@ -671,20 +784,13 @@ class _SeatScreenState extends State<SeatScreen> {
                                                       fontSize: 12,
                                                     ),
                                                   ),
-                                                  if (!isAccessible)
-                                                    Icon(
-                                                      Icons.lock,
-                                                      color: Colors.white,
-                                                      size: 12,
-                                                    ),
-                                                  if (status != 'EMPTY' && status != 'MY_SEAT' && isAccessible)
+                                                if (status != 'EMPTY' && status != 'MY_SEAT')
                                                     Icon(
                                                       Icons.email_outlined,
                                                       color: Colors.white,
                                                       size: 10,
                                                     ),
                                                 ],
-                                              ),
                                             ),
                                           ),
                                         ),

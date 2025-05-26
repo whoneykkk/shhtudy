@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
 import '../services/user_service.dart';
+import '../services/message_service.dart';
 
 class SeatService {
   static final String baseUrl = ApiConfig.baseUrl;
@@ -100,33 +101,8 @@ class SeatService {
 
   // 특정 좌석으로 쪽지 보내기
   static Future<bool> sendMessageToSeat(int seatId, String content) async {
-    try {
-      final token = await UserService.getToken();
-      if (token == null) {
-        throw Exception('인증 토큰이 없습니다.');
-      }
-
-      final response = await http.post(
-        Uri.parse('$baseUrl/messages/seats/$seatId'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: json.encode({
-          'content': content,
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
-        return data['success'] == true;
-      }
-      
-      throw Exception('쪽지 전송 실패: ${response.statusCode}');
-    } catch (e) {
-      print('쪽지 전송 중 오류: $e');
-      return false;
-    }
+    // MessageService의 sendToSeat 메서드를 사용하여 중복 제거
+    return await MessageService.sendToSeat(seatId, content);
   }
 
   // 등급별 접근 가능 여부 확인 (클라이언트 사이드 검증)

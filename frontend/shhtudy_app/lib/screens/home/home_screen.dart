@@ -112,7 +112,21 @@ class _HomeScreenState extends State<HomeScreen> {
       if (messagesResponse.statusCode == 200) {
         final Map<String, dynamic> messagesData = json.decode(messagesResponse.body);
         if (messagesData['success'] == true && messagesData['data'] != null) {
-          final List<dynamic> messagesJson = messagesData['data'];
+          // 페이지 형태의 응답인지 확인
+          final dynamic responseData = messagesData['data'];
+          List<dynamic> messagesJson;
+          
+          if (responseData is Map && responseData.containsKey('content')) {
+            // 페이지 형태의 응답
+            messagesJson = responseData['content'];
+          } else if (responseData is List) {
+            // 리스트 형태의 응답
+            messagesJson = responseData;
+          } else {
+            print('HomeScreen 예상치 못한 응답 형태: ${responseData.runtimeType}');
+            messagesJson = [];
+          }
+          
           final String currentUserId = await _getCurrentUserId();
           
           // 정적 리스트 업데이트

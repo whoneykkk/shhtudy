@@ -51,6 +51,7 @@ class NoiseService {
   }
 
   // 소음 세션 로그 조회 (API 명세서 기반)
+  // 백엔드에서는 30일 이상 지난 데이터를 자동으로 삭제하는 스케줄러 필요
   static Future<List<Map<String, dynamic>>> getNoiseSessionLogs() async {
     try {
       final token = await UserService.getToken();
@@ -75,8 +76,8 @@ class NoiseService {
       throw Exception('소음 로그 조회 실패: ${response.statusCode}');
     } catch (e) {
       print('소음 로그 조회 중 오류: $e');
-      // Mock 데이터 반환
-      return _getMockNoiseLogs();
+      // 더 이상 Mock 데이터 반환하지 않고 빈 리스트 반환
+      return [];
     }
   }
 
@@ -99,39 +100,6 @@ class NoiseService {
     }
   }
 
-  // Mock 소음 로그 데이터 생성
-  static List<Map<String, dynamic>> _getMockNoiseLogs() {
-    final now = DateTime.now();
-    return [
-      {
-        'sessionId': 1,
-        'startTime': now.subtract(Duration(hours: 2)).toIso8601String(),
-        'endTime': now.subtract(Duration(hours: 1, minutes: 30)).toIso8601String(),
-        'averageDecibel': 42,
-        'maxDecibel': 58,
-        'noiseExceededCount': 3,
-        'seatCode': 'A-4',
-      },
-      {
-        'sessionId': 2,
-        'startTime': now.subtract(Duration(hours: 5)).toIso8601String(),
-        'endTime': now.subtract(Duration(hours: 3, minutes: 45)).toIso8601String(),
-        'averageDecibel': 38,
-        'maxDecibel': 45,
-        'noiseExceededCount': 0,
-        'seatCode': 'A-4',
-      },
-      {
-        'sessionId': 3,
-        'startTime': now.subtract(Duration(days: 1, hours: 2)).toIso8601String(),
-        'endTime': now.subtract(Duration(days: 1, hours: 1)).toIso8601String(),
-        'averageDecibel': 45,
-        'maxDecibel': 62,
-        'noiseExceededCount': 5,
-        'seatCode': 'B-2',
-      },
-    ];
-  }
 
   // 실시간 소음 모니터링 시작 (향후 구현)
   static Future<void> startNoiseMonitoring(Function(int) onNoiseLevel) async {
