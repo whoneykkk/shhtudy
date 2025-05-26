@@ -43,15 +43,25 @@ class MessageService {
   }
 
   // 쪽지 상세 조회
-  static Future<Map<String, dynamic>?> getMessageDetail(dynamic messageId) async {
+  static Future<Map<String, dynamic>?> getMessageDetail(Object messageId) async {
     try {
       final token = await UserService.getToken();
       if (token == null) {
         throw Exception('인증 토큰이 없습니다.');
       }
 
+      // 메시지 ID 타입 검증
+      String messageIdStr;
+      if (messageId is int) {
+        messageIdStr = messageId.toString();
+      } else if (messageId is String) {
+        messageIdStr = messageId;
+      } else {
+        throw Exception('유효하지 않은 메시지 ID 타입입니다.');
+      }
+
       final response = await http.get(
-        Uri.parse('$baseUrl/messages/$messageId'),
+        Uri.parse('$baseUrl/messages/$messageIdStr'),
         headers: {
           'Authorization': 'Bearer $token',
         },
@@ -72,15 +82,25 @@ class MessageService {
   }
 
   // 쪽지 답장 보내기
-  static Future<bool> sendReply(dynamic originalMessageId, String content) async {
+  static Future<bool> sendReply(Object messageId, String content) async {
     try {
       final token = await UserService.getToken();
       if (token == null) {
         throw Exception('인증 토큰이 없습니다.');
       }
 
+      // 메시지 ID 타입 검증
+      String messageIdStr;
+      if (messageId is int) {
+        messageIdStr = messageId.toString();
+      } else if (messageId is String) {
+        messageIdStr = messageId;
+      } else {
+        throw Exception('유효하지 않은 메시지 ID 타입입니다.');
+      }
+
       final response = await http.post(
-        Uri.parse('$baseUrl/messages/$originalMessageId/reply'),
+        Uri.parse('$baseUrl/messages/$messageIdStr/reply'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -166,15 +186,25 @@ class MessageService {
   }
 
   // 쪽지 삭제
-  static Future<bool> deleteMessage(dynamic messageId) async {
+  static Future<bool> deleteMessage(Object messageId) async {
     try {
       final token = await UserService.getToken();
       if (token == null) {
         throw Exception('인증 토큰이 없습니다.');
       }
 
+      // 메시지 ID 타입 검증
+      String messageIdStr;
+      if (messageId is int) {
+        messageIdStr = messageId.toString();
+      } else if (messageId is String) {
+        messageIdStr = messageId;
+      } else {
+        throw Exception('유효하지 않은 메시지 ID 타입입니다.');
+      }
+
       final response = await http.delete(
-        Uri.parse('$baseUrl/messages/$messageId'),
+        Uri.parse('$baseUrl/messages/$messageIdStr'),
         headers: {
           'Authorization': 'Bearer $token',
         },
@@ -193,15 +223,25 @@ class MessageService {
   }
 
   // 쪽지 읽음 처리
-  static Future<bool> markAsRead(dynamic messageId) async {
+  static Future<bool> markAsRead(Object messageId) async {
     try {
       final token = await UserService.getToken();
       if (token == null) {
         throw Exception('인증 토큰이 없습니다.');
       }
 
+      // 메시지 ID 타입 검증
+      String messageIdStr;
+      if (messageId is int) {
+        messageIdStr = messageId.toString();
+      } else if (messageId is String) {
+        messageIdStr = messageId;
+      } else {
+        throw Exception('유효하지 않은 메시지 ID 타입입니다.');
+      }
+
       final response = await http.post(
-        Uri.parse('$baseUrl/messages/$messageId/read'),
+        Uri.parse('$baseUrl/messages/$messageIdStr/read'),
         headers: {
           'Authorization': 'Bearer $token',
         },

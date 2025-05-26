@@ -38,9 +38,17 @@ class SeatScreen extends StatefulWidget {
   State<SeatScreen> createState() => _SeatScreenState();
 }
 
+class _MessageConstants {
+  static const String sendSuccess = '좌석에 쪽지를 보냈습니다!';
+  static const String sendFailed = '쪽지 전송에 실패했습니다. 다시 시도해주세요.';
+  static const String seatNotFound = '좌석 정보를 찾을 수 없습니다.';
+  static const String sendError = '쪽지 전송 중 오류가 발생했습니다.';
+}
+
 class _SeatScreenState extends State<SeatScreen> {
   String? currentSeatCode;
   String selectedZone = 'A';
+  String? _cachedUserId;
   final List<String> zones = ['A', 'B', 'C', 'D'];
   final TextEditingController _messageController = TextEditingController();
   bool hasUnreadAlerts = false;
@@ -54,12 +62,13 @@ class _SeatScreenState extends State<SeatScreen> {
   @override
   void initState() {
     super.initState();
-    _checkUnreadAlerts();
     _initializeData();
   }
 
   // 데이터 초기화 (순서 중요)
   Future<void> _initializeData() async {
+    _cachedUserId = await _getCurrentUserId();
+    await _checkUnreadAlerts();
     await _loadUserProfile(); // 먼저 사용자 프로필 로드
     await _loadAccessibleZones(); // 그 다음 접근 가능한 구역 로드 (사용자 등급 기반)
     await _loadSeatsData(); // 마지막으로 좌석 데이터 로드
@@ -173,11 +182,14 @@ class _SeatScreenState extends State<SeatScreen> {
     }
   }
 
-  // 현재 사용자 ID 가져오기
+  // 현재 사용자 ID 가져오기 (초기화 시에만 호출)
   Future<String> _getCurrentUserId() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('user_id') ?? '';
   }
+
+  // 캐시된 사용자 ID 반환
+  String get currentUserId => _cachedUserId ?? '';
 
   // 백엔드 상태를 프론트엔드 색상으로 변환
   Color getStatusColor(String status) {
@@ -257,162 +269,164 @@ class _SeatScreenState extends State<SeatScreen> {
     super.dispose();
   }
 
+  // 스낵바 표시 헬퍼 메서드 추가
+  void _showSnackBar(String message, {bool isError = false}) {
+    if (!mounted) return;
+    
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    // 이전 스낵바 제거
+    scaffoldMessenger.removeCurrentSnackBar();
+    // 새 스낵바 표시
+    scaffoldMessenger.showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? Colors.red : AppTheme.primaryColor,
+      ),
+    );
+  }
+
   void _showSendMessageDialog(String locationCode) {
     _messageController.clear();
+    BuildContext? dialogContext;
     
     showDialog(
       context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          width: 400,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Text(
-                    '$locationCode 좌석에 쪽지 보내기',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    onPressed: () {
-                      _messageController.clear();
-                      Navigator.pop(context);
-                    },
-                    icon: const Icon(Icons.close),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppTheme.accentColor,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: TextField(
-                  controller: _messageController,
-                  maxLines: 4,
-                  decoration: const InputDecoration(
-                    hintText: '조용하게 소통할 내용을 입력하세요...\n예: "펜 빌려주실 수 있나요?", "조용히 해주세요 ㅠㅠ"',
-                    border: InputBorder.none,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () {
-                      _messageController.clear();
-                      Navigator.pop(context);
-                    },
-                    child: Text(
-                      '취소',
-                      style: TextStyle(
-                        color: AppTheme.textColor,
+      builder: (BuildContext context) {
+        dialogContext = context;
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            width: 400,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      '$locationCode 좌석에 쪽지 보내기',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  ElevatedButton(
-                    onPressed: () async {
-                      final message = _messageController.text.trim();
-                      if (message.isNotEmpty) {
+                    const Spacer(),
+                    IconButton(
+                      onPressed: () {
                         _messageController.clear();
                         Navigator.pop(context);
-                        
-                        // 다이얼로그가 완전히 닫힌 후 API 호출
-                        await Future.delayed(const Duration(milliseconds: 100));
-                        
-                        // 좌석 ID 기반 쪽지 보내기 API 호출
-                        try {
-                          // locationCode에서 seatId 찾기
-                          final seatData = currentZoneSeats.firstWhere(
-                            (seat) => seat['locationCode'] == locationCode,
-                            orElse: () => <String, dynamic>{},
-                          );
+                      },
+                      icon: const Icon(Icons.close),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppTheme.accentColor,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: TextField(
+                    controller: _messageController,
+                    maxLines: 4,
+                    decoration: const InputDecoration(
+                      hintText: '조용하게 소통할 내용을 입력하세요...\n예: "펜 빌려주실 수 있나요?", "조용히 해주세요 ㅠㅠ"',
+                      border: InputBorder.none,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () {
+                        _messageController.clear();
+                        Navigator.pop(context);
+                      },
+                      child: Text(
+                        '취소',
+                        style: TextStyle(
+                          color: AppTheme.textColor,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    ElevatedButton(
+                      onPressed: () async {
+                        final message = _messageController.text.trim();
+                        if (message.isNotEmpty && dialogContext != null) {
+                          _messageController.clear();
+                          Navigator.pop(dialogContext!);
                           
-                          if (seatData.isNotEmpty && seatData['seatId'] != null) {
-                            final bool success = await SeatService.sendMessageToSeat(
-                              seatData['seatId'], 
-                              message
+                          // 다이얼로그가 완전히 닫힌 후 API 호출
+                          await Future.delayed(const Duration(milliseconds: 300));
+                          
+                          if (!mounted) return;
+                          
+                          // 좌석 ID 기반 쪽지 보내기 API 호출
+                          try {
+                            // locationCode에서 seatId 찾기
+                            final seatData = currentZoneSeats.firstWhere(
+                              (seat) => seat['locationCode'] == locationCode,
+                              orElse: () => <String, dynamic>{},
                             );
                             
-                            if (success) {
-                              // 쪽지 전송 성공 시 MyPageScreen의 메시지 목록 새로고침
-                              await _refreshMessagesInMyPage();
-                              // 알림 상태 업데이트
-                              await AlertService.updateAlertStatus();
+                            if (seatData.isNotEmpty && seatData['seatId'] != null) {
+                              final bool success = await SeatService.sendMessageToSeat(
+                                seatData['seatId'], 
+                                message
+                              );
                               
-                              if (mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('$locationCode 좌석에 쪽지를 보냈습니다! 📩'),
-                                    backgroundColor: AppTheme.primaryColor,
-                                  ),
-                                );
+                              if (success) {
+                                // 쪽지 전송 성공 시 MyPageScreen의 메시지 목록 새로고침
+                                await _refreshMessagesInMyPage();
+                                // 알림 상태 업데이트
+                                await AlertService.updateAlertStatus();
+                                
+                                if (mounted) {
+                                  _showSnackBar(_MessageConstants.sendSuccess);
+                                }
+                              } else {
+                                if (mounted) {
+                                  _showSnackBar(_MessageConstants.sendFailed, isError: true);
+                                }
                               }
                             } else {
                               if (mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('쪽지 전송에 실패했습니다. 다시 시도해주세요.'),
-                                    backgroundColor: Colors.red,
-                                  ),
-                                );
+                                _showSnackBar(_MessageConstants.seatNotFound, isError: true);
                               }
                             }
-                          } else {
+                          } catch (e) {
+                            print('쪽지 전송 오류: $e');
                             if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('좌석 정보를 찾을 수 없습니다.'),
-                                  backgroundColor: Colors.red,
-                                ),
-                              );
+                              _showSnackBar(_MessageConstants.sendError, isError: true);
                             }
                           }
-                        } catch (e) {
-                          print('쪽지 전송 오류: $e');
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('쪽지 전송 중 오류가 발생했습니다.'),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                          }
                         }
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primaryColor,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryColor,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
+                      child: const Text('보내기'),
                     ),
-                    child: const Text('보내기'),
-                  ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+              ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -747,36 +761,36 @@ class _SeatScreenState extends State<SeatScreen> {
                                       
                                       return GestureDetector(
                                         onTap: () => _handleSeatTap(seat),
-                                        child: Container(
-                                          decoration: BoxDecoration(
-                                            color: getStatusColor(seat['status']),
-                                            borderRadius: BorderRadius.circular(12),
-                                            border: isMyCurrentSeat
-                                                ? Border.all(
-                                                    color: const Color(0xFF5E6198),
-                                                    width: 4,
-                                                  )
-                                                : null,
-                                          ),
-                                          child: Center(
-                                            child: Column(
-                                              mainAxisAlignment: MainAxisAlignment.center,
-                                              children: [
-                                                Text(
-                                                  seat['locationCode'],
-                                                  style: const TextStyle(
-                                                    color: Colors.white,
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 12,
+                                          child: Container(
+                                            decoration: BoxDecoration(
+                                              color: getStatusColor(seat['status']),
+                                              borderRadius: BorderRadius.circular(12),
+                                              border: isMyCurrentSeat
+                                                  ? Border.all(
+                                                      color: const Color(0xFF5E6198),
+                                                      width: 4,
+                                                        )
+                                                      : null,
+                                            ),
+                                            child: Center(
+                                              child: Column(
+                                                mainAxisAlignment: MainAxisAlignment.center,
+                                                children: [
+                                                  Text(
+                                                    seat['locationCode'],
+                                                    style: const TextStyle(
+                                                      color: Colors.white,
+                                                      fontWeight: FontWeight.bold,
+                                                      fontSize: 12,
+                                                    ),
                                                   ),
-                                                ),
                                                 if (status != 'EMPTY' && status != 'MY_SEAT')
-                                                  Icon(
-                                                    Icons.email_outlined,
-                                                    color: Colors.white,
-                                                    size: 10,
-                                                  ),
-                                              ],
+                                                    Icon(
+                                                      Icons.email_outlined,
+                                                      color: Colors.white,
+                                                      size: 10,
+                                                    ),
+                                                ],
                                             ),
                                           ),
                                         ),

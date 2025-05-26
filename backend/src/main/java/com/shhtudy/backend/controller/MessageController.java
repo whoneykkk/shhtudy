@@ -103,27 +103,24 @@ public class MessageController {
         return ResponseEntity.ok(new ApiResponse<>(true, "쪽지 전송 완료", null));
     }
 
-    @Operation(summary = "메시지 읽음 처리", description = "특정 메시지를 읽음으로 표시합니다.")
-    @PostMapping("/{messageId}/read")
-    public ResponseEntity<ApiResponse<String>> markMessageAsRead(
-            @PathVariable Long messageId,
+    @Operation(summary = "쪽지 읽음 처리", description = "단일 쪽지 또는 모든 쪽지를 읽음 처리합니다.")
+    @PostMapping("/read")
+    public ResponseEntity<ApiResponse<String>> markMessagesAsRead(
+            @RequestParam(required = false) Long messageId,
+            @RequestParam(defaultValue = "false") boolean all,
             @RequestHeader("Authorization") String authorizationHeader) {
-
+        
         String firebaseUid = firebaseAuthService.verifyIdToken(authorizationHeader.replace("Bearer ", ""));
-        messageService.markMessageAsRead(firebaseUid, messageId);
-
-        return ResponseEntity.ok(new ApiResponse<>(true, "읽음 처리 완료", null));
-    }
-
-    @Operation(summary = "모든 메시지 읽음 처리", description = "사용자의 모든 받은 메시지를 읽음으로 표시합니다.")
-    @PostMapping("/read-all")
-    public ResponseEntity<ApiResponse<String>> markAllMessagesAsRead(
-            @RequestHeader("Authorization") String authorizationHeader) {
-
-        String firebaseUid = firebaseAuthService.verifyIdToken(authorizationHeader.replace("Bearer ", ""));
-        messageService.markAllMessagesAsRead(firebaseUid);
-
-        return ResponseEntity.ok(new ApiResponse<>(true, "모든 메시지 읽음 처리 완료", null));
+        
+        if (all) {
+            messageService.markAllMessagesAsRead(firebaseUid);
+            return ResponseEntity.ok(new ApiResponse<>(true, "모든 메시지 읽음 처리 완료", null));
+        } else if (messageId != null) {
+            messageService.markMessageAsRead(firebaseUid, messageId);
+            return ResponseEntity.ok(new ApiResponse<>(true, "읽음 처리 완료", null));
+        } else {
+            return ResponseEntity.badRequest().body(new ApiResponse<>(false, "messageId 또는 all 파라미터가 필요합니다", null));
+        }
     }
 
 }

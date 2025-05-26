@@ -44,8 +44,8 @@ class _MessageScreenState extends State<MessageScreen> {
       // Map 데이터를 Message 객체로 변환
       final messages = messageDataList.map((data) {
         return Message.fromJson(data, currentUserId);
-      }).toList();
-      
+          }).toList();
+          
       _groupMessagesIntoThreads(messages);
     } catch (e) {
       print('메시지 로딩 오류: $e');
@@ -57,7 +57,7 @@ class _MessageScreenState extends State<MessageScreen> {
   // 현재 사용자 ID 가져오기
   Future<String> _getCurrentUserId() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
+    final prefs = await SharedPreferences.getInstance();
       return prefs.getString('user_id') ?? 'current_user';
     } catch (e) {
       return 'current_user';
@@ -274,7 +274,7 @@ class _MessageScreenState extends State<MessageScreen> {
                     onPressed: () async {
                       final content = _replyController.text.trim();
                       if (content.isNotEmpty) {
-                        Navigator.pop(context);
+                      Navigator.pop(context);
                         await _sendReply(thread, content);
                       }
                     },
@@ -302,18 +302,18 @@ class _MessageScreenState extends State<MessageScreen> {
         content: Text('이 메시지를 삭제하시겠습니까?\n\n"${message.content}"'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+                    onPressed: () => Navigator.pop(context),
             child: Text('취소', style: TextStyle(color: AppTheme.textColor)),
           ),
           TextButton(
-            onPressed: () {
-              Navigator.pop(context);
+                    onPressed: () {
+                      Navigator.pop(context);
               _deleteMessage(message);
             },
             child: const Text('삭제', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
+                  ),
+                ],
+              ),
     );
   }
 
@@ -345,32 +345,32 @@ class _MessageScreenState extends State<MessageScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.accentColor, // 공지사항과 같은 배경색
-      appBar: AppBar(
-        backgroundColor: AppTheme.accentColor,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(
-            Icons.arrow_back_ios_new,
-            color: AppTheme.primaryColor,
-            size: 20,
-          ),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          '쪽지함',
-          style: TextStyle(
-            color: AppTheme.primaryColor,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        actions: [
-          // 모던한 펼치기/접기 아이콘
-          IconButton(
-            onPressed: _toggleAllThreads,
+        appBar: AppBar(
+          backgroundColor: AppTheme.accentColor,
+          elevation: 0,
+          leading: IconButton(
             icon: Icon(
-              _allExpanded ? Icons.unfold_less : Icons.unfold_more,
+              Icons.arrow_back_ios_new,
               color: AppTheme.primaryColor,
+              size: 20,
+            ),
+          onPressed: () => Navigator.pop(context),
+          ),
+          title: Text(
+            '쪽지함',
+            style: TextStyle(
+              color: AppTheme.primaryColor,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          actions: [
+          // 모던한 펼치기/접기 아이콘
+            IconButton(
+            onPressed: _toggleAllThreads,
+              icon: Icon(
+              _allExpanded ? Icons.unfold_less : Icons.unfold_more,
+                color: AppTheme.primaryColor,
             ),
           ),
         ],
@@ -513,9 +513,9 @@ class _MessageScreenState extends State<MessageScreen> {
                             color: AppTheme.textColor.withOpacity(0.5),
                           ),
                         ),
-                      ],
-                    ),
-                  ),
+            ],
+          ),
+        ),
                   // 휴지통 아이콘만 우측 끝에 배치
                   IconButton(
                     onPressed: () => _showDeleteThreadDialog(thread),
@@ -550,7 +550,7 @@ class _MessageScreenState extends State<MessageScreen> {
                   icon: const Icon(Icons.reply, size: 18),
                   label: const Text('답장하기'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryColor,
+          backgroundColor: AppTheme.primaryColor,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -572,7 +572,7 @@ class _MessageScreenState extends State<MessageScreen> {
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+              children: [
           if (!isFirst)
             Container(
               margin: const EdgeInsets.only(right: 12, top: 8),
@@ -587,7 +587,7 @@ class _MessageScreenState extends State<MessageScreen> {
               onTap: () => _toggleMessageExpansion(message),
               onLongPress: () => _showDeleteMessageDialog(message),
               child: Container(
-                padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   gradient: message.isSent 
                     ? LinearGradient(
@@ -614,45 +614,45 @@ class _MessageScreenState extends State<MessageScreen> {
                     ),
                   ],
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: message.isSent 
+                                decoration: BoxDecoration(
+                                  color: message.isSent 
                               ? AppTheme.primaryColor.withOpacity(0.2)
                               : Colors.white.withOpacity(0.7),
                             borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                message.isSent ? Icons.send : Icons.inbox,
-                                size: 14,
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      message.isSent ? Icons.send : Icons.inbox,
+                                      size: 14,
                                 color: message.isSent ? AppTheme.primaryColor : AppTheme.textColor.withOpacity(0.7),
-                              ),
+                                    ),
                               const SizedBox(width: 4),
-                              Text(
+                                    Text(
                                 message.isSent ? '나' : '상대방',
-                                style: TextStyle(
+                                      style: TextStyle(
                                   fontSize: 12,
-                                  fontWeight: FontWeight.bold,
+                                        fontWeight: FontWeight.bold,
                                   color: message.isSent ? AppTheme.primaryColor : AppTheme.textColor.withOpacity(0.8),
                                 ),
                               ),
-                            ],
-                          ),
-                        ),
-                        const Spacer(),
-                        Text(
-                          message.formattedDate,
-                          style: TextStyle(
+                                  ],
+                                ),
+                              ),
+                              const Spacer(),
+                              Text(
+                                message.formattedDate,
+                                style: TextStyle(
                             fontSize: 11,
-                            color: AppTheme.textColor.withOpacity(0.5),
+                                  color: AppTheme.textColor.withOpacity(0.5),
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -663,23 +663,23 @@ class _MessageScreenState extends State<MessageScreen> {
                             Icons.close,
                             size: 16,
                             color: Colors.grey.withOpacity(0.6), // 회색으로 변경
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
+                          const SizedBox(height: 12),
                     // 메시지 내용 (미리보기 또는 전체 표시)
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
+                          Text(
                           expandedMessages.contains(message.messageId) 
                             ? (fullMessageContents[message.messageId] ?? message.content)
                             : message.content,
                           maxLines: expandedMessages.contains(message.messageId) ? null : null,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: AppTheme.textColor,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: AppTheme.textColor,
                             height: 1.5,
                           ),
                         ),
