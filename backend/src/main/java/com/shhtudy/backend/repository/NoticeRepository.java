@@ -18,7 +18,7 @@ public interface NoticeRepository extends JpaRepository<Notice, Long> {
     )
     ORDER BY n.createdAt DESC
 """)
-    List<Notice> findTop2UnreadByUserId(@Param("userId") String userId, Pageable pageable);
+    List<Notice> findUnreadByUserId(@Param("userId") String userId, Pageable pageable);
 
 
 }

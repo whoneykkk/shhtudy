@@ -84,7 +84,7 @@ public class NoticeService {
 
     @Transactional(readOnly = true)
     public List<NoticeSummaryResponseDto> getUnreadNoticeForMyPage(String firebaseUid) {
-        List<Notice> unreadNotices = noticeRepository.findTop2UnreadByUserId(
+        List<Notice> unreadNotices = noticeRepository.findUnreadByUserId(
                 firebaseUid,
                 PageRequest.of(0, 2, Sort.by(Sort.Direction.DESC, "createdAt"))
         );
