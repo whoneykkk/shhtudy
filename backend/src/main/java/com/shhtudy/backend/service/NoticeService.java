@@ -8,7 +8,6 @@ import com.shhtudy.backend.exception.CustomException;
 import com.shhtudy.backend.exception.code.ErrorCode;
 import com.shhtudy.backend.repository.NoticeReadRepository;
 import com.shhtudy.backend.repository.NoticeRepository;
-import com.shhtudy.backend.repository.UserRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -28,7 +27,7 @@ public class NoticeService {
     private final NoticeReadRepository noticeReadRepository;
 
     @Transactional
-    public Page<NoticeSummaryResponseDto> getAllNotices(String userId, Pageable pageable) {
+    public Page<NoticeSummaryResponseDto> getAllNotices(String firebaseUid, Pageable pageable) {
         Pageable sortedPageable = PageRequest.of(
                 pageable.getPageNumber(),
                 pageable.getPageSize(),
@@ -37,7 +36,7 @@ public class NoticeService {
 
         Page<Notice> notices = noticeRepository.findAll(sortedPageable);
 
-        List<NoticeRead> reads = noticeReadRepository.findAllByUserId(userId);
+        List<NoticeRead> reads = noticeReadRepository.findAllByUserId(firebaseUid);
         Set<Long> readNoticeIds = reads.stream()
                 .map(nr -> nr.getNotice().getId())
                 .collect(Collectors.toSet());
@@ -46,7 +45,7 @@ public class NoticeService {
                 .filter(notice -> !readNoticeIds.contains(notice.getId()))
                 .map(notice -> NoticeRead.builder()
                         .notice(notice)
-                        .userId(userId)
+                        .userId(firebaseUid)
                         .build())
                 .toList();
 
@@ -61,16 +60,16 @@ public class NoticeService {
     }
 
     @Transactional
-    public NoticeResponseDto getNoticeDetail(Long noticeId, String userId) {
+    public NoticeResponseDto getNoticeDetail(Long noticeId, String firebaseUid) {
         Notice notice = noticeRepository.findById(noticeId)
                 .orElseThrow(() -> new CustomException(ErrorCode.NOTICE_NOT_FOUND));
 
-        boolean isAlreadyRead = noticeReadRepository.existsByUserIdAndNotice_Id(userId, noticeId);
+        boolean isAlreadyRead = noticeReadRepository.existsByUserIdAndNotice_Id(firebaseUid, noticeId);
 
         if (!isAlreadyRead) {
             noticeReadRepository.save(
                     NoticeRead.builder()
-                            .userId(userId)
+                            .userId(firebaseUid)
                             .notice(notice)
                             .build()
             );
@@ -81,6 +80,18 @@ public class NoticeService {
                 .content(notice.getContent())
                 .createdAt(notice.getCreatedAt().toString())
                 .build();
+    }
+
+    @Transactional(readOnly = true)
+    public List<NoticeSummaryResponseDto> getUnreadNoticeForMyPage(String firebaseUid) {
+        List<Notice> unreadNotices = noticeRepository.findTop2UnreadByUserId(
+                firebaseUid,
+                PageRequest.of(0, 2, Sort.by(Sort.Direction.DESC, "createdAt"))
+        );
+
+        return unreadNotices.stream()
+                .map(notice -> new NoticeSummaryResponseDto(notice, false))
+                .toList();
     }
 
 }

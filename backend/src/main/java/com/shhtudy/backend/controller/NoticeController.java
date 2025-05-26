@@ -16,6 +16,8 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/notices")
@@ -52,6 +54,22 @@ public class NoticeController {
         NoticeResponseDto response = noticeService.getNoticeDetail(noticeId, userId);
 
         return ResponseEntity.ok(ApiResponse.success(response, "공지 상세 조회 성공"));
+    }
+
+    @Operation(summary = "마이페이지 공지 요약 조회", description = "읽지 않은 공지를 최신순으로 최대 2건 조회합니다.")
+    @GetMapping("/mypage")
+    public ResponseEntity<ApiResponse<List<NoticeSummaryResponseDto>>> getMessageSummaryForMyPage(
+            @RequestHeader("Authorization") String authorizationHeader
+    ) {
+        String firebaseUid = firebaseAuthService.verifyIdToken(authorizationHeader.replace("Bearer ", ""));
+
+        List<NoticeSummaryResponseDto> result = noticeService.getUnreadNoticeForMyPage(firebaseUid);
+
+        if (result.isEmpty()) {
+            return ResponseEntity.ok(ApiResponse.success(result, "읽지 않은 공지가 없습니다."));
+        }
+
+        return ResponseEntity.ok(ApiResponse.success(result, "마이페이지 공지 요약 조회 성공"));
     }
 
 }
