@@ -219,6 +219,40 @@ class _NoiseLogScreenState extends State<NoiseLogScreen> {
               ),
             ),
             
+            // 30일 제한 안내
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              padding: const EdgeInsets.all(12.0),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: AppTheme.primaryColor.withOpacity(0.3),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.info_outline,
+                    color: AppTheme.primaryColor,
+                    size: 16,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '소음 로그는 최대 30일간 보관되며, 이후 자동으로 삭제됩니다.',
+                      style: TextStyle(
+                        color: AppTheme.primaryColor,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
             // 로그 목록
             Expanded(
               child: _isLoading
@@ -296,11 +330,11 @@ class _NoiseLogScreenState extends State<NoiseLogScreen> {
   Widget _buildFilterChip(String label, bool isSelected, VoidCallback onTap) {
     return Expanded(
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 4),
+        margin: const EdgeInsets.symmetric(horizontal: 2),
         child: InkWell(
           onTap: onTap,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
             decoration: BoxDecoration(
               color: isSelected ? AppTheme.primaryColor : AppTheme.accentColor,
               borderRadius: BorderRadius.circular(20),
@@ -313,7 +347,7 @@ class _NoiseLogScreenState extends State<NoiseLogScreen> {
               child: Text(
                 label,
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: 12,
                   color: isSelected ? Colors.white : AppTheme.textColor,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                 ),

@@ -90,5 +90,38 @@ public class MessageController {
         return ResponseEntity.ok(ApiResponse.success(null, "삭제 완료"));
     }
 
+    @Operation(summary = "좌석별 쪽지 전송", description = "특정 좌석에 앉아있는 사용자에게 쪽지를 보냅니다.")
+    @PostMapping("/seats/{seatId}")
+    public ResponseEntity<ApiResponse<String>> sendMessageToSeat(
+            @PathVariable Integer seatId,
+            @RequestBody @Valid MessageSendRequestDto request,
+            @RequestHeader("Authorization") String authorizationHeader) {
+
+        String senderUid = firebaseAuthService.verifyIdToken(authorizationHeader.replace("Bearer ", ""));
+        messageService.sendMessageToSeat(senderUid, seatId, request);
+
+        return ResponseEntity.ok(new ApiResponse<>(true, "쪽지 전송 완료", null));
+    }
+
+    @Operation(summary = "쪽지 읽음 처리", description = "단일 쪽지 또는 모든 쪽지를 읽음 처리합니다.")
+    @PostMapping("/read")
+    public ResponseEntity<ApiResponse<String>> markMessagesAsRead(
+            @RequestParam(required = false) Long messageId,
+            @RequestParam(defaultValue = "false") boolean all,
+            @RequestHeader("Authorization") String authorizationHeader) {
+        
+        String firebaseUid = firebaseAuthService.verifyIdToken(authorizationHeader.replace("Bearer ", ""));
+        
+        if (all) {
+            messageService.markAllMessagesAsRead(firebaseUid);
+            return ResponseEntity.ok(new ApiResponse<>(true, "모든 메시지 읽음 처리 완료", null));
+        } else if (messageId != null) {
+            messageService.markMessageAsRead(firebaseUid, messageId);
+            return ResponseEntity.ok(new ApiResponse<>(true, "읽음 처리 완료", null));
+        } else {
+            return ResponseEntity.badRequest().body(new ApiResponse<>(false, "messageId 또는 all 파라미터가 필요합니다", null));
+        }
+    }
+
 }
 

@@ -16,6 +16,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 public class MessageService {
@@ -145,6 +147,28 @@ public class MessageService {
         } else {
             messageRepository.save(message);
         }
+    }
+
+    @Transactional
+    public void markMessageAsRead(String firebaseUid, Long messageId) {
+        Message message = messageRepository.findById(messageId)
+                .orElseThrow(() -> new CustomException(ErrorCode.MESSAGE_NOT_FOUND));
+
+        // 받은 메시지만 읽음 처리 가능
+        if (!firebaseUid.equals(message.getReceiverId())) {
+            throw new CustomException(ErrorCode.FORBIDDEN);
+        }
+
+        message.setRead(true);
+        messageRepository.save(message);
+    }
+
+    @Transactional
+    public void markAllMessagesAsRead(String firebaseUid) {
+        // 사용자가 받은 모든 읽지 않은 메시지를 읽음으로 처리
+        List<Message> unreadMessages = messageRepository.findByReceiverIdAndReadFalseAndDeletedByReceiverFalse(firebaseUid);
+        unreadMessages.forEach(message -> message.setRead(true));
+        messageRepository.saveAll(unreadMessages);
     }
 
 }

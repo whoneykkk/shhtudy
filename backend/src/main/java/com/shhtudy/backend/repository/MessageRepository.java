@@ -7,10 +7,13 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
+
 public interface MessageRepository extends JpaRepository<Message, Long> {
     long countByReceiverIdAndReadFalseAndDeletedByReceiverFalse(String receiverId);
     Page<Message> findByReceiverIdAndDeletedByReceiverFalse(String receiverId, Pageable pageable);
     Page<Message> findBySenderIdAndDeletedBySenderFalse(String senderId, Pageable pageable);
+    List<Message> findByReceiverIdAndReadFalseAndDeletedByReceiverFalse(String receiverId);
     @Query("""
         SELECT m FROM Message m
         WHERE
