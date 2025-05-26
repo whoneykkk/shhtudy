@@ -19,4 +19,5 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
             (m.receiverId = :uid AND m.deletedByReceiver = false)
     """)
     Page<Message> findAllVisibleMessages(@Param("uid") String uid, Pageable pageable);
+    Page<Message> findByReceiverIdAndReadFalseAndDeletedByReceiverFalseOrderBySentAtDesc(String receiverId, Pageable pageable);
 }

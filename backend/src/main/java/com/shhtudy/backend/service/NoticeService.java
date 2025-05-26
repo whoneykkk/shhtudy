@@ -1,19 +1,22 @@
 package com.shhtudy.backend.service;
 
 import com.shhtudy.backend.dto.NoticeResponseDto;
+import com.shhtudy.backend.dto.NoticeSummaryResponseDto;
 import com.shhtudy.backend.entity.Notice;
 import com.shhtudy.backend.entity.NoticeRead;
-import com.shhtudy.backend.entity.User;
 import com.shhtudy.backend.exception.CustomException;
 import com.shhtudy.backend.exception.code.ErrorCode;
 import com.shhtudy.backend.repository.NoticeReadRepository;
 import com.shhtudy.backend.repository.NoticeRepository;
 import com.shhtudy.backend.repository.UserRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -23,85 +26,61 @@ import java.util.stream.Collectors;
 public class NoticeService {
     private final NoticeRepository noticeRepository;
     private final NoticeReadRepository noticeReadRepository;
-    private final UserRepository userRepository;
 
-    @Transactional(readOnly=true)
-    public List<NoticeResponseDto> getNoticeWithRaeadStatus(String firebaseUid) {
-        User user = userRepository.findById(firebaseUid).
-                orElseThrow(()-> new CustomException(ErrorCode.USER_NOT_FOUND));
+    @Transactional
+    public Page<NoticeSummaryResponseDto> getAllNotices(String userId, Pageable pageable) {
+        Pageable sortedPageable = PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                Sort.by("createdAt").descending()
+        );
 
-        List<Notice> notices = noticeRepository.findAllByOrderByCreatedAtDesc();
+        Page<Notice> notices = noticeRepository.findAll(sortedPageable);
 
-        List<NoticeRead> reads = noticeReadRepository.findAllByUser(user);
-        //사용자가 읽은 공지 ID 목록
+        List<NoticeRead> reads = noticeReadRepository.findAllByUserId(userId);
         Set<Long> readNoticeIds = reads.stream()
                 .map(nr -> nr.getNotice().getId())
                 .collect(Collectors.toSet());
 
-        //공지사항 리스트를 dto로 변환하면서 읽음 여부 판단
-        return notices.stream()
-                .map(notice -> new NoticeResponseDto(
+        List<NoticeRead> unreadReads = notices.getContent().stream()
+                .filter(notice -> !readNoticeIds.contains(notice.getId()))
+                .map(notice -> NoticeRead.builder()
+                        .notice(notice)
+                        .userId(userId)
+                        .build())
+                .toList();
+
+        noticeReadRepository.saveAll(unreadReads);
+
+        return notices.map(notice ->
+                new NoticeSummaryResponseDto(
                         notice,
                         readNoticeIds.contains(notice.getId())
-                ))
-                .toList();
+                )
+        );
     }
 
     @Transactional
-    public void markAsRead(String firebaseUid, Long noticeId) {
-        // 1. 사용자 조회
-        User user = userRepository.findById(firebaseUid)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
-
-        // 2. 공지사항 존재 여부 확인
+    public NoticeResponseDto getNoticeDetail(Long noticeId, String userId) {
         Notice notice = noticeRepository.findById(noticeId)
                 .orElseThrow(() -> new CustomException(ErrorCode.NOTICE_NOT_FOUND));
 
-        // 3. 이미 읽었는지 체크
-        boolean alreadyRead = noticeReadRepository.existsByUserAndNotice(user, notice);
-        if (alreadyRead) {
-            throw new CustomException(ErrorCode.ALREADY_READ);
+        boolean isAlreadyRead = noticeReadRepository.existsByUserIdAndNotice_Id(userId, noticeId);
+
+        if (!isAlreadyRead) {
+            noticeReadRepository.save(
+                    NoticeRead.builder()
+                            .userId(userId)
+                            .notice(notice)
+                            .build()
+            );
         }
 
-        // 4. 읽음 기록 저장
-        NoticeRead noticeRead = new NoticeRead();
-        noticeRead.setUser(user);
-        noticeRead.setNotice(notice);
-        noticeRead.setReadAt(LocalDateTime.now());
-
-        noticeReadRepository.save(noticeRead);
+        return NoticeResponseDto.builder()
+                .title(notice.getTitle())
+                .content(notice.getContent())
+                .createdAt(notice.getCreatedAt().toString())
+                .build();
     }
 
-    @Transactional
-    public void markAllAsRead(String firebaseUid) {
-        // 1. 사용자 조회
-        User user = userRepository.findById(firebaseUid)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
-
-        // 2. 모든 공지사항 조회
-        List<Notice> allNotices = noticeRepository.findAllByOrderByCreatedAtDesc();
-
-        // 3. 이미 읽은 공지사항 ID 목록 조회
-        List<NoticeRead> existingReads = noticeReadRepository.findAllByUser(user);
-        Set<Long> readNoticeIds = existingReads.stream()
-                .map(nr -> nr.getNotice().getId())
-                .collect(Collectors.toSet());
-
-        // 4. 읽지 않은 공지사항들에 대해 읽음 기록 생성
-        List<NoticeRead> newReads = allNotices.stream()
-                .filter(notice -> !readNoticeIds.contains(notice.getId()))
-                .map(notice -> {
-                    NoticeRead noticeRead = new NoticeRead();
-                    noticeRead.setUser(user);
-                    noticeRead.setNotice(notice);
-                    noticeRead.setReadAt(LocalDateTime.now());
-                    return noticeRead;
-                })
-                .collect(Collectors.toList());
-
-        // 5. 새로운 읽음 기록들 저장
-        if (!newReads.isEmpty()) {
-            noticeReadRepository.saveAll(newReads);
-        }
-    }
 }

@@ -2,6 +2,7 @@ package com.shhtudy.backend.dto;
 
 import com.shhtudy.backend.entity.Message;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
@@ -9,6 +10,7 @@ import java.time.format.DateTimeFormatter;
 
 @Getter
 @AllArgsConstructor
+@Builder
 public class MessageListResponseDto {
     private Long id;
     private String counterpartDisplayName; // 예: "A-3번 (123)" or "퇴실한 사용자 (123)"

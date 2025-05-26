@@ -50,10 +50,11 @@ public class MessageService {
         message.setReceiverId(receiverUid);
         message.setContent(content);
 
+
         messageRepository.save(message);
     }
 
-    public Page<MessageListResponseDto> getMessageList(String firebaseUid, String type, Pageable pageable) {
+    public Page<MessageListResponseDto> getAllMessages(String firebaseUid, String type, Pageable pageable) {
 
         Page<Message> messages = switch (type) {
             case "received" -> messageRepository.findByReceiverIdAndDeletedByReceiverFalse(firebaseUid, pageable);
@@ -147,4 +148,17 @@ public class MessageService {
         }
     }
 
+    public Page<MessageListResponseDto> getUnreadReceivedMessagesForMyPage(String firebaseUid, Pageable pageable) {
+        Page<Message> messages = messageRepository
+                .findByReceiverIdAndReadFalseAndDeletedByReceiverFalseOrderBySentAtDesc(firebaseUid, pageable);
+
+        return messages.map(message -> {
+            User sender = userRepository.findByFirebaseUid(message.getSenderId())
+                    .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+
+            String displayName = getDisplayName(sender);
+
+            return MessageListResponseDto.from(message, displayName, false); // 항상 false
+        });
+    }
 }

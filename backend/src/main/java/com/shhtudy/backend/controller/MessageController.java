@@ -11,7 +11,9 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import io.swagger.v3.oas.annotations.Operation;
@@ -29,7 +31,7 @@ public class MessageController {
 
     @Operation(summary = "쪽지 목록 조회", description = "받은/보낸/전체 쪽지를 조회합니다.")
     @GetMapping
-    public ResponseEntity<ApiResponse<Page<MessageListResponseDto>>> getMessageList(
+    public ResponseEntity<ApiResponse<Page<MessageListResponseDto>>> getAllMessages(
             @RequestHeader("Authorization") String authorizationHeader,
             @RequestParam(defaultValue = "all") String type,
             @Parameter(hidden = true) Pageable pageable
@@ -37,7 +39,7 @@ public class MessageController {
         String idToken = authorizationHeader.replace("Bearer ", "");
         String firebaseUid = firebaseAuthService.verifyIdToken(idToken);
 
-        Page<MessageListResponseDto> result = messageService.getMessageList(firebaseUid, type, pageable);
+        Page<MessageListResponseDto> result = messageService.getAllMessages(firebaseUid, type, pageable);
         return ResponseEntity.ok(ApiResponse.success(result, "조회 성공"));
     }
 
@@ -90,5 +92,22 @@ public class MessageController {
         return ResponseEntity.ok(ApiResponse.success(null, "삭제 완료"));
     }
 
+    @Operation(summary = "마이페이지 쪽지 요약 조회", description = "읽지 않은 쪽지 중 삭제되지 않은 쪽지를 최신순으로 최대 2건 조회합니다.")
+    @GetMapping("/mypage")
+    public ResponseEntity<ApiResponse<Page<MessageListResponseDto>>> getMessageSummaryForMyPage(
+            @RequestHeader("Authorization") String authorizationHeader
+    ) {
+        String firebaseUid = firebaseAuthService.verifyIdToken(authorizationHeader.replace("Bearer ", ""));
+
+        Pageable pageable = PageRequest.of(0, 2, Sort.by(Sort.Direction.DESC, "sentAt"));
+        Page<MessageListResponseDto> result = messageService.getUnreadReceivedMessagesForMyPage(firebaseUid, pageable);
+
+        if (result.isEmpty()) {
+            return ResponseEntity.ok(ApiResponse.success(result, "읽지 않은 쪽지가 없습니다."));
+        }
+
+        return ResponseEntity.ok(ApiResponse.success(result, "마이페이지 쪽지 요약 조회 성공"));
+    }
+    //TODO: 읽지 않은 쪽지 개수를 마이페이지 쪽지 요약 조회와 합쳐야되나
 }
 
