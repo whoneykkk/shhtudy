@@ -29,7 +29,7 @@ public class MessageController {
     private final MessageService messageService;
     private final FirebaseAuthService firebaseAuthService;
 
-    @Operation(summary = "쪽지 목록 조회", description = "받은/보낸/전체 쪽지를 조회합니다.\n 받은 메시지에 한해서 모두 읽음 처리합니다.")
+    @Operation(summary = "쪽지 목록 조회", description = "받은/보낸/전체 쪽지 목록을 조회합니다. 받은 쪽지 목록 조회 시 안 읽은 쪽지는 모두 읽음 처리 합니다.")
     @GetMapping
     public ResponseEntity<ApiResponse<Page<MessageListResponseDto>>> getAllMessages(
             @RequestHeader("Authorization") String authorizationHeader,
@@ -56,7 +56,7 @@ public class MessageController {
         return ResponseEntity.ok(new ApiResponse<>(true, "답장 전송 완료", null));
     }
 
-    @Operation(summary = "쪽지 상세 조회", description = "받은/보낸/전체 쪽지를 상세 조회합니다.")
+    @Operation(summary = "쪽지 상세 조회", description = "받은/보낸/전체 쪽지를 상세 조회합니다. 조회한 쪽지는 읽음 처리 합니다.")
     @GetMapping("/{messageId}")
     public ResponseEntity<ApiResponse<MessageResponseDto>> getMessageDetail(
             @RequestHeader("Authorization") String authorizationHeader,

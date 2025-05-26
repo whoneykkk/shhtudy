@@ -26,7 +26,7 @@ public class NoticeController {
     private final NoticeService noticeService;
     private final FirebaseAuthService firebaseAuthService;
 
-    @Operation(summary = "공지 목록 조회", description = "공지 목록을 조회합니다.")
+    @Operation(summary = "공지 목록 조회", description = "공지 목록을 조회합니다. 목록 조회 시 안 읽은 공지는 모두 읽음 처리 합니다.")
     @GetMapping
     public ResponseEntity<ApiResponse<Page<NoticeSummaryResponseDto>>> getAllNotices(
             @RequestHeader("Authorization") String authorizationHeader,
@@ -40,7 +40,7 @@ public class NoticeController {
         return ResponseEntity.ok(ApiResponse.success(response, "공지 목록 조회 성공"));
     }
 
-    @Operation(summary = "공지 단건 조회", description = "공지 1개를 상세 조회합니다.")
+    @Operation(summary = "공지 상세 조회", description = "공지 1개를 상세 조회합니다. 조회한 공지는 읽음 처리 합니다.")
     @GetMapping("/{noticeId}")
     public ResponseEntity<ApiResponse<NoticeResponseDto>> getNoticeDetail(
             @RequestHeader("Authorization") String authorizationHeader,
