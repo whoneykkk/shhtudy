@@ -15,4 +15,6 @@ public class LoginResponseDto {
     private String currentSeat;
     private int averageDecibel;
     private int noiseOccurrence;
+    private int mannerScore;
+    private int points;
 }

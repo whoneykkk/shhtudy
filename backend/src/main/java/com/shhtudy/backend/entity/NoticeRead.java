@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class NoticeRead {
 
     @Id
@@ -21,9 +22,13 @@ public class NoticeRead {
     @JoinColumn(name = "notice_id")
     private Notice notice;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id")
-    private User user;
+    @Column(name = "user_id", nullable = false, length = 128)
+    private String userId;
 
-    private LocalDateTime readAt = LocalDateTime.now();
+    private LocalDateTime readAt;
+
+    @PrePersist
+    protected void prePersist() {
+        this.readAt = LocalDateTime.now();
+    }
 }

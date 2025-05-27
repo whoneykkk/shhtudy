@@ -41,6 +41,8 @@ public class AuthService {
         response.setRemainingTime(user.getRemainingTime());
         response.setAverageDecibel(user.getAverageDecibel());
         response.setNoiseOccurrence(user.getNoiseOccurrence());
+        response.setMannerScore(user.getMannerScore());
+        response.setPoints(user.getPoints());
 
         // 현재 좌석 위치가 있으면 locationCode 추가
         if (user.getCurrentSeat() != null) {

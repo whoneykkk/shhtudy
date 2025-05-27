@@ -3,29 +3,50 @@ package com.shhtudy.backend.entity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.time.LocalDateTime;
 
 @Entity
 @Getter
+@Setter
 @NoArgsConstructor
-@Table(name = "messages")
+@Table(
+        name = "messages",
+        indexes = {
+                @Index(name = "idx_sender_id", columnList = "sender_id"),
+                @Index(name = "idx_receiver_id", columnList = "receiver_id")
+        }
+)
 public class Message {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long messageId;
 
-    @Column(nullable = false)
-    private String senderId;  // 보낸 사용자 (firebase_uid)
+    @Column(name = "sender_id", nullable = false)
+    private String senderId;
 
-    @Column(nullable = false)
-    private String receiverId; // 받는 사용자 (firebase_uid)
+    @Column(name = "receiver_id", nullable = false)
+    private String receiverId;
 
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;  // 메세지 내용
 
-    @Column(nullable = false)
-    private boolean isRead = false;  // 읽음 여부 (기본값 false)
+    @Column(name = "is_read", nullable = false)
+    private boolean read = false;
 
     @Column(nullable = false, updatable = false)
-    private java.time.LocalDateTime sentAt = java.time.LocalDateTime.now();  // 보낸 시각
+    private LocalDateTime sentAt;
+
+    @Column(nullable = false)
+    private boolean deletedBySender = false;
+
+    @Column(nullable = false)
+    private boolean deletedByReceiver = false;
+
+    @PrePersist
+    protected void prePersist() {
+        this.sentAt = LocalDateTime.now();
+    }
 }
