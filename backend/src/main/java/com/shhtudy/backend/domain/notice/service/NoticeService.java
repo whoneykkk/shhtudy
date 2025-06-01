@@ -1,7 +1,9 @@
 package com.shhtudy.backend.domain.notice.service;
 
+import com.shhtudy.backend.domain.notice.dto.MyPageNoticeDto;
+import com.shhtudy.backend.domain.notice.dto.MyPageNoticesResponse;
 import com.shhtudy.backend.domain.notice.dto.NoticeResponseDto;
-import com.shhtudy.backend.domain.notice.dto.NoticeSummaryResponseDto;
+import com.shhtudy.backend.domain.notice.dto.NoticeListResponseDto;
 import com.shhtudy.backend.domain.notice.entity.Notice;
 import com.shhtudy.backend.domain.notice.entity.NoticeRead;
 import com.shhtudy.backend.global.exception.CustomException;
@@ -27,7 +29,7 @@ public class NoticeService {
     private final NoticeReadRepository noticeReadRepository;
 
     @Transactional
-    public Page<NoticeSummaryResponseDto> getAllNotices(String firebaseUid, Pageable pageable) {
+    public Page<NoticeListResponseDto> getAllNotices(String firebaseUid, Pageable pageable) {
         Pageable sortedPageable = PageRequest.of(
                 pageable.getPageNumber(),
                 pageable.getPageSize(),
@@ -52,7 +54,7 @@ public class NoticeService {
         noticeReadRepository.saveAll(unreadReads);
 
         return notices.map(notice ->
-                new NoticeSummaryResponseDto(
+                new NoticeListResponseDto(
                         notice,
                         readNoticeIds.contains(notice.getId())
                 )
@@ -83,15 +85,18 @@ public class NoticeService {
     }
 
     @Transactional(readOnly = true)
-    public List<NoticeSummaryResponseDto> getUnreadNoticeForMyPage(String firebaseUid) {
-        List<Notice> unreadNotices = noticeRepository.findUnreadByUserId(
+    public MyPageNoticesResponse getUnreadNoticeForMyPage(String firebaseUid) {
+        int unreadCount = noticeReadRepository.countUnreadByUserId(firebaseUid);
+
+        List<Notice> recentUnreadNotices = noticeRepository.findUnreadByUserId(
                 firebaseUid,
                 PageRequest.of(0, 2, Sort.by(Sort.Direction.DESC, "createdAt"))
         );
 
-        return unreadNotices.stream()
-                .map(notice -> new NoticeSummaryResponseDto(notice, false))
+        List<MyPageNoticeDto> noticeDtos = recentUnreadNotices.stream()
+                .map(notice -> new MyPageNoticeDto(notice, false))
                 .toList();
-    }
 
+        return new MyPageNoticesResponse(unreadCount, noticeDtos);
+    }
 }
