@@ -1,7 +1,7 @@
 package com.shhtudy.backend.domain.notice.service;
 
 import com.shhtudy.backend.domain.notice.dto.MyPageNoticeDto;
-import com.shhtudy.backend.domain.notice.dto.MyPageNoticesResponse;
+import com.shhtudy.backend.domain.notice.dto.MyPageNoticesResponseDto;
 import com.shhtudy.backend.domain.notice.dto.NoticeResponseDto;
 import com.shhtudy.backend.domain.notice.dto.NoticeListResponseDto;
 import com.shhtudy.backend.domain.notice.entity.Notice;
@@ -85,7 +85,7 @@ public class NoticeService {
     }
 
     @Transactional(readOnly = true)
-    public MyPageNoticesResponse getUnreadNoticeForMyPage(String firebaseUid) {
+    public MyPageNoticesResponseDto getUnreadNoticeForMyPage(String firebaseUid) {
         int unreadCount = noticeReadRepository.countUnreadByUserId(firebaseUid);
 
         List<Notice> recentUnreadNotices = noticeRepository.findUnreadByUserId(
@@ -97,6 +97,6 @@ public class NoticeService {
                 .map(notice -> new MyPageNoticeDto(notice, false))
                 .toList();
 
-        return new MyPageNoticesResponse(unreadCount, noticeDtos);
+        return new MyPageNoticesResponseDto(unreadCount, noticeDtos);
     }
 }

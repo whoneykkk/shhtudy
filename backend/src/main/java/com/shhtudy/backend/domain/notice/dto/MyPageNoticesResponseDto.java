@@ -7,11 +7,11 @@ import java.util.List;
 
 @Getter
 @Schema(description = "마이페이지 공지 응답 DTO")
-public class MyPageNoticesResponse {
+public class MyPageNoticesResponseDto {
     private final int unreadCount;
     private final List<MyPageNoticeDto> notices;
 
-    public MyPageNoticesResponse(int unreadCount, List<MyPageNoticeDto> notices) {
+    public MyPageNoticesResponseDto(int unreadCount, List<MyPageNoticeDto> notices) {
         this.unreadCount = unreadCount;
         this.notices = notices;
     }

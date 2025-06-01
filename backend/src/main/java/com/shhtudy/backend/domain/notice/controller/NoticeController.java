@@ -1,6 +1,6 @@
 package com.shhtudy.backend.domain.notice.controller;
 
-import com.shhtudy.backend.domain.notice.dto.MyPageNoticesResponse;
+import com.shhtudy.backend.domain.notice.dto.MyPageNoticesResponseDto;
 import com.shhtudy.backend.domain.notice.dto.NoticeResponseDto;
 import com.shhtudy.backend.domain.notice.dto.NoticeListResponseDto;
 import com.shhtudy.backend.global.response.ApiResponse;
@@ -57,12 +57,12 @@ public class NoticeController {
 
     @Operation(summary = "마이페이지 공지 요약 조회", description = "읽지 않은 공지를 최신순으로 최대 2건 조회합니다.")
     @GetMapping("/mypage")
-    public ResponseEntity<ApiResponse<MyPageNoticesResponse>> getUnreadNoticeForMyPage(
+    public ResponseEntity<ApiResponse<MyPageNoticesResponseDto>> getUnreadNoticeForMyPage(
             @RequestHeader("Authorization") String authorizationHeader
     ) {
         String firebaseUid = firebaseAuthService.verifyIdToken(authorizationHeader.replace("Bearer ", ""));
 
-        MyPageNoticesResponse result = noticeService.getUnreadNoticeForMyPage(firebaseUid);
+        MyPageNoticesResponseDto result = noticeService.getUnreadNoticeForMyPage(firebaseUid);
 
         if (result.getNotices().isEmpty()) {
             return ResponseEntity.ok(ApiResponse.success(result, "읽지 않은 공지가 없습니다."));
