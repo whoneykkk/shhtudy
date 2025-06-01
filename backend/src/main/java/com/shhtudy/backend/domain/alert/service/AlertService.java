@@ -1,5 +1,6 @@
-package com.shhtudy.backend.domain.alert;
+package com.shhtudy.backend.domain.alert.service;
 
+import com.shhtudy.backend.domain.alert.dto.AlertStatusResponseDto;
 import com.shhtudy.backend.domain.message.repository.MessageRepository;
 import com.shhtudy.backend.domain.notice.repository.NoticeReadRepository;
 import com.shhtudy.backend.domain.user.repository.UserRepository;

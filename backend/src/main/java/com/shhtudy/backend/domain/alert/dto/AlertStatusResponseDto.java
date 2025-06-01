@@ -1,4 +1,4 @@
-package com.shhtudy.backend.domain.alert;
+package com.shhtudy.backend.domain.alert.dto;
 
 import lombok.Getter;
 

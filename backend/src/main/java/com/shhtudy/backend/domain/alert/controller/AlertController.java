@@ -1,5 +1,7 @@
-package com.shhtudy.backend.domain.alert;
+package com.shhtudy.backend.domain.alert.controller;
 
+import com.shhtudy.backend.domain.alert.dto.AlertStatusResponseDto;
+import com.shhtudy.backend.domain.alert.service.AlertService;
 import com.shhtudy.backend.global.response.ApiResponse;
 import com.shhtudy.backend.global.auth.FirebaseAuthService;
 import io.swagger.v3.oas.annotations.Operation;
