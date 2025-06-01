@@ -1,8 +1,6 @@
 package com.shhtudy.backend.domain.message.service;
 
-import com.shhtudy.backend.domain.message.dto.MessageListResponseDto;
-import com.shhtudy.backend.domain.message.dto.MessageResponseDto;
-import com.shhtudy.backend.domain.message.dto.MessageSendRequestDto;
+import com.shhtudy.backend.domain.message.dto.*;
 import com.shhtudy.backend.domain.message.entity.Message;
 import com.shhtudy.backend.domain.seat.entity.Seat;
 import com.shhtudy.backend.domain.user.entity.User;
@@ -13,8 +11,11 @@ import com.shhtudy.backend.domain.user.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -129,10 +130,6 @@ public class MessageService {
         return MessageResponseDto.from(message, getDisplayName(sender));
     }
 
-    public long countUnreadMessages(String firebaseUid) {
-        return messageRepository.countByReceiverIdAndReadFalseAndDeletedByReceiverFalse(firebaseUid);
-    }
-    
     @Transactional
     public void deleteMessage(String firebaseUid, Long messageId) {
         Message message = messageRepository.findById(messageId)
@@ -157,17 +154,35 @@ public class MessageService {
         }
     }
 
-    public Page<MessageListResponseDto> getUnreadReceivedMessagesForMyPage(String firebaseUid, Pageable pageable) {
-        Page<Message> messages = messageRepository
-                .findByReceiverIdAndReadFalseAndDeletedByReceiverFalseOrderBySentAtDesc(firebaseUid, pageable);
+    public MyPageMessagesResponseDto getUnreadReceivedMessagesForMyPage(String firebaseUid) {
+        long unreadCount = messageRepository.countByReceiverIdAndReadFalseAndDeletedByReceiverFalse(firebaseUid);
 
-        return messages.map(message -> {
-            User sender = userRepository.findByFirebaseUid(message.getSenderId())
-                    .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        List<Message> unreadMessages = messageRepository
+                .findByReceiverIdAndReadFalseAndDeletedByReceiverFalseOrderBySentAtDesc(
+                        firebaseUid,
+                        PageRequest.of(0, 2)
+                ).getContent();
 
-            String displayName = getDisplayName(sender);
+        List<MyPageMessageDto> messageDtos = unreadMessages.stream()
+                .map(message -> {
+                    // 상대방 UID
+                    String counterpartUid = message.getSenderId();
 
-            return MessageListResponseDto.from(message, displayName, false); // 항상 false
-        });
+                    // 유저 조회
+                    User counterpart = userRepository.findByFirebaseUid(counterpartUid)
+                            .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+
+                    // 닉네임 + 좌석 정보로 displayName 구성
+                    String displayName = getDisplayName(counterpart);
+
+                    return new MyPageMessageDto(
+                            message,
+                            displayName,
+                            message.getSenderId().equals(firebaseUid)
+                    );
+                })
+                .toList();
+
+        return new MyPageMessagesResponseDto(unreadCount, messageDtos);
     }
 }
