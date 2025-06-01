@@ -20,4 +20,6 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
     """)
     Page<Message> findAllVisibleMessages(@Param("uid") String uid, Pageable pageable);
     Page<Message> findByReceiverIdAndReadFalseAndDeletedByReceiverFalseOrderBySentAtDesc(String receiverId, Pageable pageable);
+
+    boolean existsByReceiverIdAndReadFalseAndDeletedByReceiverFalse(String firebaseUid);
 }
