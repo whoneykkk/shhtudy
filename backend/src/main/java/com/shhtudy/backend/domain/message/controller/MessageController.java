@@ -3,6 +3,7 @@ package com.shhtudy.backend.domain.message.controller;
 import com.shhtudy.backend.domain.message.dto.MessageListResponseDto;
 import com.shhtudy.backend.domain.message.dto.MessageResponseDto;
 import com.shhtudy.backend.domain.message.dto.MessageSendRequestDto;
+import com.shhtudy.backend.domain.message.dto.MyPageMessagesResponseDto;
 import com.shhtudy.backend.global.response.ApiResponse;
 import com.shhtudy.backend.global.auth.FirebaseAuthService;
 import com.shhtudy.backend.domain.message.service.MessageService;
@@ -11,9 +12,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import io.swagger.v3.oas.annotations.Operation;
@@ -69,18 +68,6 @@ public class MessageController {
         return ResponseEntity.ok(ApiResponse.success(result, "조회 성공"));
     }
 
-    @Operation(summary = "읽지 않은 쪽지 수 조회", description = "사용자의 읽지 않은 쪽지 수를 반환합니다.")
-    @GetMapping("/unread-count")
-    public ResponseEntity<ApiResponse<Long>> getUnreadMessageCount(
-            @RequestHeader("Authorization") String authorizationHeader) {
-
-        String idToken = authorizationHeader.replace("Bearer ", "");
-        String firebaseUid = firebaseAuthService.verifyIdToken(idToken);
-
-        long count = messageService.countUnreadMessages(firebaseUid);
-        return ResponseEntity.ok(ApiResponse.success(count, "조회 성공"));
-    }
-
     @Operation(summary = "쪽지 삭제", description = "자신이 받은 또는 보낸 쪽지를 삭제합니다. 양측 모두 삭제 시 실제 삭제됩니다.")
     @DeleteMapping("/{messageId}")
     public ResponseEntity<ApiResponse<String>> deleteMessage(
@@ -94,20 +81,18 @@ public class MessageController {
 
     @Operation(summary = "마이페이지 쪽지 요약 조회", description = "읽지 않은 쪽지 중 삭제되지 않은 쪽지를 최신순으로 최대 2건 조회합니다.")
     @GetMapping("/mypage")
-    public ResponseEntity<ApiResponse<Page<MessageListResponseDto>>> getMessageSummaryForMyPage(
+    public ResponseEntity<ApiResponse<MyPageMessagesResponseDto>> getMessageSummaryForMyPage(
             @RequestHeader("Authorization") String authorizationHeader
     ) {
         String firebaseUid = firebaseAuthService.verifyIdToken(authorizationHeader.replace("Bearer ", ""));
 
-        Pageable pageable = PageRequest.of(0, 2, Sort.by(Sort.Direction.DESC, "sentAt"));
-        Page<MessageListResponseDto> result = messageService.getUnreadReceivedMessagesForMyPage(firebaseUid, pageable);
+        MyPageMessagesResponseDto result=messageService.getUnreadReceivedMessagesForMyPage(firebaseUid);
 
-        if (result.isEmpty()) {
+        if (result.getMessages().isEmpty()) {
             return ResponseEntity.ok(ApiResponse.success(result, "읽지 않은 쪽지가 없습니다."));
         }
 
         return ResponseEntity.ok(ApiResponse.success(result, "마이페이지 쪽지 요약 조회 성공"));
     }
-    //TODO: 읽지 않은 쪽지 개수를 마이페이지 쪽지 요약 조회와 합쳐야되나
 }
 
