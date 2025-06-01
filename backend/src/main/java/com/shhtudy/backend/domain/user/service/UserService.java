@@ -100,17 +100,4 @@ public class UserService {
         
         return dto;
     }
-    
-    /**
-     * 로그아웃 처리
-     */
-    @Transactional
-    public void logout(String firebaseUid) {
-        // 1. 사용자 조회
-        User user = userRepository.findByFirebaseUid(firebaseUid)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
-        
-        // 2. 로그아웃 처리 (필요한 로직 추가)
-        logger.info("로그아웃 성공 - firebaseUid: {}", firebaseUid);
-    }
 }
