@@ -16,4 +16,15 @@ public interface NoticeReadRepository extends JpaRepository<NoticeRead, Long> {
     List<NoticeRead> findAllByUserId(String userId);
 
     boolean existsByUserIdAndNotice_Id(String userId, Long noticeId);
+
+    @Query("""
+    SELECT COUNT(n)
+    FROM Notice n
+    WHERE n.id NOT IN (
+        SELECT r.notice.id
+        FROM NoticeRead r
+        WHERE r.userId = :userId
+    )
+""")
+    int countUnreadByUserId(@Param("userId") String userId);
 }

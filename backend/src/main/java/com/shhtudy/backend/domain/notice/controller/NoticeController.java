@@ -1,7 +1,8 @@
 package com.shhtudy.backend.domain.notice.controller;
 
+import com.shhtudy.backend.domain.notice.dto.MyPageNoticesResponse;
 import com.shhtudy.backend.domain.notice.dto.NoticeResponseDto;
-import com.shhtudy.backend.domain.notice.dto.NoticeSummaryResponseDto;
+import com.shhtudy.backend.domain.notice.dto.NoticeListResponseDto;
 import com.shhtudy.backend.global.response.ApiResponse;
 import com.shhtudy.backend.global.auth.FirebaseAuthService;
 import com.shhtudy.backend.domain.notice.service.NoticeService;
@@ -16,8 +17,6 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/notices")
@@ -30,14 +29,14 @@ public class NoticeController {
 
     @Operation(summary = "공지 목록 조회", description = "공지 목록을 조회합니다. 목록 조회 시 안 읽은 공지는 모두 읽음 처리 합니다.")
     @GetMapping
-    public ResponseEntity<ApiResponse<Page<NoticeSummaryResponseDto>>> getAllNotices(
+    public ResponseEntity<ApiResponse<Page<NoticeListResponseDto>>> getAllNotices(
             @RequestHeader("Authorization") String authorizationHeader,
             @Parameter(hidden = true) @PageableDefault(size = 10) Pageable pageable
     ) {
         String idToken = authorizationHeader.replace("Bearer ", "");
         String userId = firebaseAuthService.verifyIdToken(idToken);
 
-        Page<NoticeSummaryResponseDto> response = noticeService.getAllNotices(userId, pageable);
+        Page<NoticeListResponseDto> response = noticeService.getAllNotices(userId, pageable);
 
         return ResponseEntity.ok(ApiResponse.success(response, "공지 목록 조회 성공"));
     }
@@ -58,18 +57,17 @@ public class NoticeController {
 
     @Operation(summary = "마이페이지 공지 요약 조회", description = "읽지 않은 공지를 최신순으로 최대 2건 조회합니다.")
     @GetMapping("/mypage")
-    public ResponseEntity<ApiResponse<List<NoticeSummaryResponseDto>>> getMessageSummaryForMyPage(
+    public ResponseEntity<ApiResponse<MyPageNoticesResponse>> getUnreadNoticeForMyPage(
             @RequestHeader("Authorization") String authorizationHeader
     ) {
         String firebaseUid = firebaseAuthService.verifyIdToken(authorizationHeader.replace("Bearer ", ""));
 
-        List<NoticeSummaryResponseDto> result = noticeService.getUnreadNoticeForMyPage(firebaseUid);
+        MyPageNoticesResponse result = noticeService.getUnreadNoticeForMyPage(firebaseUid);
 
-        if (result.isEmpty()) {
+        if (result.getNotices().isEmpty()) {
             return ResponseEntity.ok(ApiResponse.success(result, "읽지 않은 공지가 없습니다."));
         }
 
         return ResponseEntity.ok(ApiResponse.success(result, "마이페이지 공지 요약 조회 성공"));
     }
-
 }
