@@ -1,6 +1,6 @@
 package com.shhtudy.backend.domain.user.service;
 
-import com.shhtudy.backend.domain.auth.dto.SignUpRequestDto;
+import com.shhtudy.backend.domain.user.dto.SignUpRequestDto;
 import com.shhtudy.backend.domain.user.dto.UserProfileResponseDto;
 import com.shhtudy.backend.domain.user.entity.User;
 import com.shhtudy.backend.global.exception.CustomException;
