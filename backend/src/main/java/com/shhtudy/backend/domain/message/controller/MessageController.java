@@ -20,7 +20,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/messages")
+@RequestMapping("/api/messages")
 @SecurityRequirement(name = "FirebaseToken")
 @Tag(name = "Message", description = "쪽지 관련 API")
 
