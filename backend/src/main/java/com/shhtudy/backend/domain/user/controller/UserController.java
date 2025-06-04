@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/users")
+@RequestMapping("/api/users")
 @SecurityRequirement(name = "FirebaseToken")
 @Tag(name = "User", description = "유저 관련 API")
 
