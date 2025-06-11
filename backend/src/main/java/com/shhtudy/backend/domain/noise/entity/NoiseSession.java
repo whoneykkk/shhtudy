@@ -25,18 +25,24 @@ public class NoiseSession {
     @Column(name = "checkin_time", nullable = false)
     private LocalDateTime checkinTime;
 
-    @Column(name = "checkout_time", nullable = false)
+    @Column(name = "checkout_time", nullable = true)
+    @Setter
     private LocalDateTime checkoutTime;
 
     @Column(name = "avg_decibel", nullable = false)
+    @Setter
     private double avgDecibel;
 
     @Column(name = "max_decibel", nullable = false)
+    @Setter
     private double maxDecibel;
 
     @Column(name = "quiet_ratio", nullable = false)
+    @Setter
     private double quietRatio;
 
     @Column(name = "created_at", nullable = false)
+    @Setter
     private LocalDateTime createdAt;
+
 }

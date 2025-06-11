@@ -14,9 +14,6 @@ public class NoiseEventDto {
     @Schema(description = "데시벨", example = "55.0")
     private double decibel;
 
-    @Schema(description = "기준 해석 메시지", example = "기준 소음 초과")
-    private String description;
-
     @Schema(description = "측정 시각", example = "2025-06-04T15:30:00")
     private LocalDateTime measuredAt;
 }

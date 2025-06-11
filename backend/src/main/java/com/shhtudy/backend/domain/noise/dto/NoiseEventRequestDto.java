@@ -10,17 +10,15 @@ import java.time.LocalDateTime;
 
 @Getter
 @Setter
-@Schema(description = "소음 이벤트 요청 DTO (기준 초과 시 전송)")
+@Schema(description = "소음 이벤트 기록 요청 DTO")
 public class NoiseEventRequestDto {
 
-    // firebaseUid는 파라미터 토큰으로 ㄱㄱ
-
-    @Schema(description = "측정된 데시벨 값", example = "67.3", required = true)
-    @DecimalMin("0.0")
     @NotNull
+    @DecimalMin(value = "0.0", message = "데시벨 값은 0 이상이어야 합니다.")
+    @Schema(description = "측정된 데시벨 값", example = "55.0")
     private Double decibel;
 
-    @Schema(description = "측정 시간 (클라이언트 시간 기준)", example = "2025-06-04T15:30:00", required = true)
     @NotNull
+    @Schema(description = "측정 시각", example = "2024-03-25T14:30:00")
     private LocalDateTime measuredAt;
 }
