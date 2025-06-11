@@ -14,12 +14,12 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
     @Query("""
         SELECT m FROM Message m
         WHERE
-            (m.senderId = :uid AND m.deletedBySender = false)
+            (m.senderId = :userId AND m.deletedBySender = false)
             OR
-            (m.receiverId = :uid AND m.deletedByReceiver = false)
+            (m.receiverId = :userId AND m.deletedByReceiver = false)
     """)
-    Page<Message> findAllVisibleMessages(@Param("uid") String uid, Pageable pageable);
+    Page<Message> findAllVisibleMessages(@Param("userId") String userId, Pageable pageable);
     Page<Message> findByReceiverIdAndReadFalseAndDeletedByReceiverFalseOrderBySentAtDesc(String receiverId, Pageable pageable);
 
-    boolean existsByReceiverIdAndReadFalseAndDeletedByReceiverFalse(String firebaseUid);
+    boolean existsByReceiverIdAndReadFalseAndDeletedByReceiverFalse(String userId);
 }
