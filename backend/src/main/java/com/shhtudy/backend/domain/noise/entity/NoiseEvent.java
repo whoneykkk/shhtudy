@@ -1,33 +1,33 @@
 package com.shhtudy.backend.domain.noise.entity;
 
 import com.shhtudy.backend.domain.user.entity.User;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "noise_events")
 @Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@Schema(description = "소음 이벤트 엔티티")
 public class NoiseEvent {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Schema(description = "소음 이벤트 고유 ID")
     private Long id;
-
-    @Column(nullable = false)
-    private double decibel;
-
-    @Column(name = "measured_at", nullable = false)
-    private LocalDateTime measuredAt;
-
-    @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
+
+    @Schema(description = "측정된 데시벨 값", example = "55.0")
+    private double decibel;
+
+    @Schema(description = "측정 시각", example = "2024-03-25T14:30:00")
+    private LocalDateTime measuredAt;
 }

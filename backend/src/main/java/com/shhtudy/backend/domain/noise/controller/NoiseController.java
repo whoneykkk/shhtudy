@@ -1,27 +1,17 @@
 package com.shhtudy.backend.domain.noise.controller;
 
-import com.shhtudy.backend.domain.noise.entity.Noise;
-import com.shhtudy.backend.domain.noise.enums.NoiseStatus;
+import com.shhtudy.backend.domain.noise.dto.NoiseEventRequestDto;
+import com.shhtudy.backend.domain.noise.dto.NoiseSessionRequestDto;
 import com.shhtudy.backend.domain.noise.service.NoiseService;
-import com.shhtudy.backend.domain.user.entity.User;
-import com.shhtudy.backend.domain.user.repository.UserRepository;
-import com.shhtudy.backend.global.auth.FirebaseAuthService;
-import com.shhtudy.backend.global.exception.CustomException;
-import com.shhtudy.backend.global.exception.code.ErrorCode;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-
-import java.time.LocalDateTime;
-import java.util.List;
-
-//필독: 다른 도메인 컨트롤러 참고해서 firebaseUid(userId) 받기.
-//@RequestHeader("Authorization") String authorizationHeader -> userId가 이거고, 파라미터에 넣기
-//String firebaseUid = firebaseAuthService.verifyIdToken(authorizationHeader.replace("Bearer ", "")); // 매서드 안에 넣기
 
 @RestController
 @RequestMapping("/api/noise")
@@ -29,45 +19,28 @@ import java.util.List;
 @SecurityRequirement(name = "FirebaseToken")
 @Tag(name = "Noise", description = "소음 관련 API")
 public class NoiseController {
+
     private final NoiseService noiseService;
-    private final FirebaseAuthService firebaseAuthService;
-    private final UserRepository userRepository;
 
-    @Operation(summary = "", description = "")
-    @PostMapping("/record")
-    public ResponseEntity<Noise> recordNoise(
-            @RequestParam Double decibelLevel,
-            @RequestParam String userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
-        return ResponseEntity.ok(noiseService.recordNoise(decibelLevel, user));
+    @PostMapping("/event")
+    @Operation(summary = "소음 이벤트 저장", description = "실시간 측정된 소음 이벤트를 서버에 저장합니다.")
+    public ResponseEntity<Void> saveNoiseEvent(@RequestBody @Valid NoiseEventRequestDto dto) {
+        noiseService.saveNoiseEvent(dto);
+        return ResponseEntity.ok().build();
     }
 
-    @Operation(summary = "", description = "")
-    @GetMapping("/status/{status}")
-    public ResponseEntity<List<Noise>> getNoiseByStatus(@PathVariable NoiseStatus status) {
-        return ResponseEntity.ok(noiseService.getNoiseByStatus(status));
+    @PutMapping("/session/close")
+    @Operation(summary = "소음 세션 종료 및 통계 저장")
+    public ResponseEntity<String> closeNoiseSession(@RequestBody @Validated NoiseSessionRequestDto requestDto) {
+        noiseService.closeSession(requestDto);
+        return ResponseEntity.ok("세션 종료 및 통계 저장 완료");
     }
 
-    @Operation(summary = "", description = "")
-    @GetMapping("/history")
-    public ResponseEntity<List<Noise>> getNoiseHistory(
+    @PostMapping("/score")
+    public NoiseScoreDto getScoreAndTier(
             @RequestParam String userId,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startTime,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endTime) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
-        return ResponseEntity.ok(noiseService.getNoiseHistory(user, startTime, endTime));
-    }
-
-    @Operation(summary = "", description = "")
-    @GetMapping("/average")
-    public ResponseEntity<Double> getAverageNoiseLevel(
-            @RequestParam String userId,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startTime,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endTime) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
-        return ResponseEntity.ok(noiseService.getAverageNoiseLevel(user, startTime, endTime));
+            @RequestParam double quietRatio
+    ) {
+        return noiseService.calculateScoreAndTier(userId, quietRatio);
     }
 }
