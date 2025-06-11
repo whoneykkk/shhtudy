@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 public class NoiseSessionRequestDto {
 
     @NotNull
-    @Schema(description = "체크인 시각", example = "2024-03-25T10:00:00")
+    @Schema(description = "체크인 시각 (UTC 기준)", example = "2024-03-25T10:00:00")
     private LocalDateTime checkinTime;
 
     @NotNull
