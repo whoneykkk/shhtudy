@@ -6,6 +6,7 @@ import com.shhtudy.backend.domain.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 
 @Entity
@@ -33,9 +34,8 @@ public class Usage extends BaseEntity {
         return usage;
     }
 
-    public void checkOut() {
-        this.checkOutTime = LocalDateTime.now();
-        this.usageStatus = UsageStatus.COMPLETED;
+    private Integer calculateUsedMinutes() {
+        return (int) Duration.between(this.checkInTime, this.checkOutTime).toMinutes();
     }
 
     public void expire() {
@@ -44,7 +44,9 @@ public class Usage extends BaseEntity {
         this.usageStatus = UsageStatus.EXPIRED;
     }
 
-    private int calculateUsedMinutes() {
-        return (int) java.time.Duration.between(this.checkInTime, this.checkOutTime).toMinutes();
+    public void checkOut() {
+        this.checkOutTime = LocalDateTime.now();
+        this.usedMinutes = calculateUsedMinutes(); // 사용 시간 계산
+        this.usageStatus = UsageStatus.COMPLETED;
     }
 }

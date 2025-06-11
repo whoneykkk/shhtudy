@@ -18,13 +18,14 @@ public class UsageService {
     private final UsageRepository usageRepository;
     private final UserRepository userRepository;
 
+    @Transactional
     public void checkIn(String firebaseUid) {
-        User user = userRepository.findById(firebaseUid)
+        User user = userRepository.findByFirebaseUid(firebaseUid)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
         Usage usage = Usage.checkIn(user);
         usageRepository.save(usage);
-        //TODO: 남은시간 반환?
+        //TODO: 남은 시간 반환 고민중
     }
 
     @Transactional

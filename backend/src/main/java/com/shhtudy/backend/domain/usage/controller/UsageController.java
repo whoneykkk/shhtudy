@@ -20,7 +20,10 @@ public class UsageController {
     private final FirebaseAuthService firebaseAuthService;
 
     private String extractUid(String authorizationHeader) {
-        return firebaseAuthService.verifyIdToken(authorizationHeader.replace("Bearer ", ""));
+        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
+            throw new IllegalArgumentException("Missing or invalid Authorization header");
+        }
+        return firebaseAuthService.verifyIdToken(authorizationHeader.substring(7));
     }
 
     @Operation(summary = "체크인", description = "사용자가 좌석에 입장할 때 체크인 로그를 남깁니다.")
