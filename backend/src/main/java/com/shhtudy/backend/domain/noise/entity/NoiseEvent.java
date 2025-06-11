@@ -8,6 +8,7 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
+@Table(name = "noise_events")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -26,8 +27,10 @@ public class NoiseEvent {
     private User user;
 
     @Schema(description = "측정된 데시벨 값", example = "55.0")
+    @Column(nullable = false)
     private double decibel;
 
     @Schema(description = "측정 시각", example = "2024-03-25T14:30:00")
+    @Column(name = "measured_at", nullable = false)
     private LocalDateTime measuredAt;
 }

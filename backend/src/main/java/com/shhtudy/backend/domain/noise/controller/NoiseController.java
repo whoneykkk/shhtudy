@@ -40,8 +40,9 @@ public class NoiseController {
     }
 
     @PutMapping("/score")
-    @Operation(summary = "점수 및 티어 계산")
-    public ResponseCustom<Void> Calculator() {
-        return ResponseCustom.OK();
+    @Operation(summary = "점수 및 티어 계산", description = "인증된 사용자의 점수 및 등급을 다시 계산합니다.")
+    public ResponseCustom<Void> calculateScoreAndTier(@AuthenticationPrincipal User user) {
+        noiseService.recalculateUserScoreAndGrade(user);
+        return ResponseCustom.OK("점수 및 등급이 재계산되었습니다.");
     }
 }

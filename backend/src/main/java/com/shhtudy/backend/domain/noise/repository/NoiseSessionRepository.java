@@ -11,7 +11,9 @@ import java.util.Optional;
 @Repository
 public interface NoiseSessionRepository extends JpaRepository<NoiseSession, Long> {
 
-    Optional<NoiseSession> findTopByUserOrderByCheckinTimeDesc(User user);
-
+    // 최근 전체 세션 조회 (종료된 것 포함)
     List<NoiseSession> findByUser(User user);
+
+    // 아직 닫히지 않은 가장 최근 세션만 조회
+    Optional<NoiseSession> findTopByUserAndCheckoutTimeIsNullOrderByCheckinTimeDesc(User user);
 }
