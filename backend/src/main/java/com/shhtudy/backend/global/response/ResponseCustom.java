@@ -1,15 +1,16 @@
 package com.shhtudy.backend.global.response;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.annotation.Nullable;
 import lombok.*;
 import org.springframework.http.HttpStatus;
 
 import java.time.LocalDateTime;
 
 @Getter
+@Setter
+@ToString
 @NoArgsConstructor
-@AllArgsConstructor
-@Builder
 @Schema(description = "API 공통 응답")
 public class ResponseCustom<T> {
 
@@ -26,35 +27,76 @@ public class ResponseCustom<T> {
     private int statusCode;
 
     @Schema(description = "HTTP 상태 이름", example = "OK")
-    private String status;
+    private HttpStatus status;
 
-    public static <T> ResponseCustom<T> of(T data, String message, HttpStatus httpStatus) {
-        return ResponseCustom.<T>builder()
+    @Builder
+    public ResponseCustom(T data, LocalDateTime timestamp, String message, HttpStatus status, int statusCode) {
+        this.data = data;
+        this.timestamp = timestamp;
+        this.message = message;
+        this.status = status;
+        this.statusCode = statusCode;
+    }
+
+    public static <T> ResponseCustom<T> OK(@Nullable T data) {
+        return (ResponseCustom<T>) ResponseCustom.builder()
                 .data(data)
-                .message(message)
                 .timestamp(LocalDateTime.now())
-                .statusCode(httpStatus.value())
-                .status(httpStatus.name())
+                .status(HttpStatus.OK)
+                .statusCode(HttpStatus.OK.value())
+                .build();
+    }
+    public static <T> ResponseCustom<T> OK() {
+        return (ResponseCustom<T>) ResponseCustom.builder()
+                .timestamp(LocalDateTime.now())
+                .message("요청이 성공적으로 처리되었습니다.")
+                .status(HttpStatus.OK)
+                .statusCode(HttpStatus.OK.value())
                 .build();
     }
 
-    public static <T> ResponseCustom<T> ok(T data) {
-        return of(data, "요청이 성공적으로 처리되었습니다.", HttpStatus.OK);
+    public static <T> ResponseCustom<T> OK(String message) {
+        return (ResponseCustom<T>) ResponseCustom.builder()
+                .timestamp(LocalDateTime.now())
+                .message(message)
+                .status(HttpStatus.OK)
+                .statusCode(HttpStatus.OK.value())
+                .build();
     }
 
     public static <T> ResponseCustom<T> created(T data) {
-        return of(data, "리소스가 성공적으로 생성되었습니다.", HttpStatus.CREATED);
+        return (ResponseCustom<T>) ResponseCustom.builder()
+                .data(data)
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.CREATED)
+                .statusCode(HttpStatus.CREATED.value())
+                .build();
     }
 
-    public static <T> ResponseCustom<T> badRequest(String message) {
-        return of(null, message, HttpStatus.BAD_REQUEST);
+    public static <T> ResponseCustom<T> badRequest(@Nullable T data) {
+        return (ResponseCustom<T>) ResponseCustom.builder()
+                .data(data)
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.BAD_REQUEST)
+                .statusCode(HttpStatus.BAD_REQUEST.value())
+                .build();
     }
 
-    public static <T> ResponseCustom<T> notFound(String message) {
-        return of(null, message, HttpStatus.NOT_FOUND);
+    public static <T> ResponseCustom<T> notFound(@Nullable T data) {
+        return (ResponseCustom<T>) ResponseCustom.builder()
+                .data(data)
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.NOT_FOUND)
+                .statusCode(HttpStatus.NOT_FOUND.value())
+                .build();
     }
 
-    public static <T> ResponseCustom<T> internalServerError(String message) {
-        return of(null, message, HttpStatus.INTERNAL_SERVER_ERROR);
+    public static <T> ResponseCustom<T> internalServerError(@Nullable T data) {
+        return (ResponseCustom<T>) ResponseCustom.builder()
+                .data(data)
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .statusCode(HttpStatus.INTERNAL_SERVER_ERROR.value())
+                .build();
     }
 }

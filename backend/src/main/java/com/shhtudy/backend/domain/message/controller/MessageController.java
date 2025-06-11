@@ -12,7 +12,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -31,62 +30,61 @@ public class MessageController {
 
     @Operation(summary = "쪽지 목록 조회", description = "받은/보낸/전체 쪽지 목록을 조회합니다. 받은 쪽지 목록 조회 시 안 읽은 쪽지는 모두 읽음 처리 합니다.")
     @GetMapping
-    public ResponseEntity<ResponseCustom<Page<MessageListResponseDto>>> getAllMessages(
+    public ResponseCustom<Page<MessageListResponseDto>> getAllMessages(
             @RequestHeader("Authorization") String authorizationHeader,
             @RequestParam(defaultValue = "all") String type,
             @Parameter(hidden = true) Pageable pageable
     ) {
         String firebaseUid = extractUid(authorizationHeader);
         Page<MessageListResponseDto> result = messageService.getAllMessages(firebaseUid, type, pageable);
-        return ResponseEntity.ok(ResponseCustom.ok(result));
+        return ResponseCustom.OK(result);
     }
 
     @Operation(summary = "쪽지 답장", description = "특정 메시지에 대해 상대방에게 답장을 보냅니다.")
     @PostMapping("/{messageId}/reply")
-    public ResponseEntity<ResponseCustom<Void>> replyToMessage(
+    public ResponseCustom<Void> replyToMessage(
             @PathVariable Long messageId,
             @RequestBody @Valid MessageSendRequestDto request,
             @RequestHeader("Authorization") String authorizationHeader
     ) {
         String senderUid = extractUid(authorizationHeader);
         messageService.sendReplyMessage(senderUid, messageId, request);
-        return ResponseEntity.ok(ResponseCustom.ok(null));
+        return ResponseCustom.OK();
     }
 
     @Operation(summary = "쪽지 상세 조회", description = "받은/보낸/전체 쪽지를 상세 조회합니다. 조회한 쪽지는 읽음 처리 합니다.")
     @GetMapping("/{messageId}")
-    public ResponseEntity<ResponseCustom<MessageResponseDto>> getMessageDetail(
+    public ResponseCustom<MessageResponseDto> getMessageDetail(
             @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable Long messageId
     ) {
         String firebaseUid = extractUid(authorizationHeader);
         MessageResponseDto result = messageService.getMessageDetail(messageId, firebaseUid);
-        return ResponseEntity.ok(ResponseCustom.ok(result));
+        return ResponseCustom.OK(result);
     }
 
     @Operation(summary = "쪽지 삭제", description = "자신이 받은 또는 보낸 쪽지를 삭제합니다. 양측 모두 삭제 시 실제 삭제됩니다.")
     @DeleteMapping("/{messageId}")
-    public ResponseEntity<ResponseCustom<Void>> deleteMessage(
+    public ResponseCustom<Void> deleteMessage(
             @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable Long messageId
     ) {
         String firebaseUid = extractUid(authorizationHeader);
         messageService.deleteMessage(firebaseUid, messageId);
-        return ResponseEntity.ok(ResponseCustom.ok(null));
+        return ResponseCustom.OK();
     }
 
     @Operation(summary = "마이페이지 쪽지 요약 조회", description = "읽지 않은 쪽지 중 삭제되지 않은 쪽지를 최신순으로 최대 2건 조회합니다.")
     @GetMapping("/mypage")
-    public ResponseEntity<ResponseCustom<MyPageMessagesResponseDto>> getMessageSummaryForMyPage(
+    public ResponseCustom<MyPageMessagesResponseDto> getMessageSummaryForMyPage(
             @RequestHeader("Authorization") String authorizationHeader
     ) {
         String firebaseUid = extractUid(authorizationHeader);
         MyPageMessagesResponseDto result = messageService.getUnreadReceivedMessagesForMyPage(firebaseUid);
 
-        String message = result.getMessages().isEmpty()
-                ? "읽지 않은 쪽지가 없습니다."
-                : "마이페이지 쪽지 요약 조회 성공";
+        if(result.getMessages().isEmpty())
+            return ResponseCustom.OK("읽지 않은 쪽지가 존재하지 않습니다.");
 
-        return ResponseEntity.ok(ResponseCustom.of(result, message, org.springframework.http.HttpStatus.OK));
+        return ResponseCustom.OK(result);
     }
 }
