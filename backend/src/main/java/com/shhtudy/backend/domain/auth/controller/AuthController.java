@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @RequestMapping("api/auth")
 @Tag(name = "Auth", description = "인증 관련 API")
-
+//TODO: 배포 전 삭제
 public class AuthController {
 
     private final AuthService authService;
