@@ -19,4 +19,13 @@ public class NoiseSessionRequestDto {
     @NotNull
     @Schema(description = "체크아웃 시각", example = "2025-06-11T15:30:00")
     private LocalDateTime checkoutTime;
+
+    @Schema(description = "평균 데시벨", example = "42.3")
+    private double averageDecibel;
+
+    @Schema(description = "조용한 시간 비율 (0.0 ~ 1.0)", example = "0.82")
+    private double quietRatio;
+
+    @Schema(description = "최고 데시벨", example = "63.0")
+    private double maxDecibel;
 }
