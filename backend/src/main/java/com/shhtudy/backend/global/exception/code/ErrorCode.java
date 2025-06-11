@@ -24,6 +24,11 @@ public enum ErrorCode {
     MESSAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "-2001", "존재하지 않는 메시지입니다."),
     FORBIDDEN(HttpStatus.FORBIDDEN, "-2002", "접근 권한이 없습니다."),
 
+    // Usage 관련 오류 (-3000 ~ -3999)
+    USAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "-3001", "진행 중인 사용 로그가 존재하지 않습니다."),
+    ALREADY_CHECKED_OUT(HttpStatus.CONFLICT, "-3002", "이미 체크아웃된 로그입니다."),
+    ALREADY_EXPIRED(HttpStatus.CONFLICT, "-3003", "이미 만료된 사용 로그입니다."),
+
     // 공지사항 관련 오류 (-4000 ~ -4999)
     NOTICE_NOT_FOUND(HttpStatus.NOT_FOUND, "-4001", "해당 ID의 공지사항이 존재하지 않습니다."),
     ALREADY_READ(HttpStatus.CONFLICT, "-4002", "이미 읽은 공지사항입니다. (중복 등록 방지)"),
