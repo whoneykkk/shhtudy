@@ -1,5 +1,6 @@
 package com.shhtudy.backend.domain.message.entity;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.shhtudy.backend.domain.common.BaseEntity;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.persistence.*;
@@ -37,15 +38,23 @@ public class Message extends BaseEntity {
     @Column(nullable = false, updatable = false)
     private LocalDateTime sentAt;
 
+    @PrePersist
+    protected void prePersist() {
+        this.sentAt = LocalDateTime.now();
+    }
+
     @Schema(description = "읽음 여부", example = "false")
+    @JsonProperty("isRead")
     @Column(name = "is_read", nullable = false)
     private boolean read = false;
 
     @Schema(description = "보낸 사람이 삭제했는지 여부", example = "false")
+    @JsonProperty("isDeletedBySender")
     @Column(nullable = false)
     private boolean deletedBySender = false;
 
     @Schema(description = "받은 사람이 삭제했는지 여부", example = "false")
+    @JsonProperty("isDeletedByReceiver")
     @Column(nullable = false)
     private boolean deletedByReceiver = false;
 }

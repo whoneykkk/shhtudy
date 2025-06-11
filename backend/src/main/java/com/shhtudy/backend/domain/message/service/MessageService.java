@@ -16,7 +16,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -43,11 +42,11 @@ public class MessageService {
         message.setSenderId(senderUid);
         message.setReceiverId(receiverUid);
         message.setContent(content);
-        message.setSentAt(LocalDateTime.now());
 
         messageRepository.save(message);
     }
 
+    @Transactional
     public Page<MessageListResponseDto> getAllMessages(String userId, String type, Pageable pageable) {
         Page<Message> messages = switch (type) {
             case "received" -> {
