@@ -13,10 +13,6 @@ import java.time.LocalDateTime;
 public class NoiseEventRequestDto {
 
     @NotNull
-    @Schema(description = "Firebase UID", example = "abc123firebase")
-    private String userId;
-
-    @NotNull
     @Schema(description = "측정된 데시벨 값", example = "55.0")
     private double decibel;
 

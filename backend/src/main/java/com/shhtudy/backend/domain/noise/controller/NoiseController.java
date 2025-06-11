@@ -3,13 +3,14 @@ package com.shhtudy.backend.domain.noise.controller;
 import com.shhtudy.backend.domain.noise.dto.NoiseEventRequestDto;
 import com.shhtudy.backend.domain.noise.dto.NoiseSessionRequestDto;
 import com.shhtudy.backend.domain.noise.service.NoiseService;
+import com.shhtudy.backend.global.response.ResponseCustom;
+import com.shhtudy.backend.domain.user.entity.User;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,23 +25,23 @@ public class NoiseController {
 
     @PostMapping("/event")
     @Operation(summary = "소음 이벤트 저장", description = "실시간 측정된 소음 이벤트를 서버에 저장합니다.")
-    public ResponseEntity<Void> saveNoiseEvent(@RequestBody @Valid NoiseEventRequestDto dto) {
-        noiseService.saveNoiseEvent(dto);
-        return ResponseEntity.ok().build();
+    public ResponseCustom<Void> saveNoiseEvent(@AuthenticationPrincipal User user,
+                                               @RequestBody @Valid NoiseEventRequestDto dto) {
+        noiseService.saveNoiseEvent(user, dto);
+        return ResponseCustom.OK();
     }
 
     @PutMapping("/session/close")
     @Operation(summary = "소음 세션 종료 및 통계 저장")
-    public ResponseEntity<String> closeNoiseSession(@RequestBody @Validated NoiseSessionRequestDto requestDto) {
-        noiseService.closeSession(requestDto);
-        return ResponseEntity.ok("세션 종료 및 통계 저장 완료");
+    public ResponseCustom<Void> closeNoiseSession(@AuthenticationPrincipal User user,
+                                                  @RequestBody @Validated NoiseSessionRequestDto requestDto) {
+        noiseService.closeSession(user, requestDto);
+        return ResponseCustom.OK("세션 종료 및 통계 저장 완료");
     }
 
-    @PostMapping("/score")
-    public NoiseScoreDto getScoreAndTier(
-            @RequestParam String userId,
-            @RequestParam double quietRatio
-    ) {
-        return noiseService.calculateScoreAndTier(userId, quietRatio);
+    @PutMapping("/score")
+    @Operation(summary = "점수 및 티어 계산")
+    public ResponseCustom<Void> Calculator() {
+        return ResponseCustom.OK();
     }
 }

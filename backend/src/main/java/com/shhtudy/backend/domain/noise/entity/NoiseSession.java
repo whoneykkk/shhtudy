@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "noise_sessions")
 @Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -40,5 +41,4 @@ public class NoiseSession {
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
-    private double score;
 }
