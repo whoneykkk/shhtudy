@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/seats")
+@RequestMapping("api/seats")
 @SecurityRequirement(name = "FirebaseToken")
 @Tag(name = "Seat", description = "좌석 관련 API (데모 앱 - 조회만)")
 public class SeatController {

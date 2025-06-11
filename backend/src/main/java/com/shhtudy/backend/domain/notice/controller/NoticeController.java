@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/notices")
+@RequestMapping("api/notices")
 @SecurityRequirement(name = "FirebaseToken")
 @Tag(name = "Notice", description = "공지 관련 API")
 

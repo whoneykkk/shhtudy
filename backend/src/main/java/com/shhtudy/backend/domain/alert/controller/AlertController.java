@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/alerts")
+@RequestMapping("api/alerts")
 @SecurityRequirement(name = "FirebaseToken")
 @Tag(name = "Alert", description = "알림 관련 API")
 
