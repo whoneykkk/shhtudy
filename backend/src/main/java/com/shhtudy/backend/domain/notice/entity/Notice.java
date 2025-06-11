@@ -1,9 +1,8 @@
 package com.shhtudy.backend.domain.notice.entity;
 
+import com.shhtudy.backend.domain.common.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
-
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "notices")
@@ -11,22 +10,9 @@ import java.time.LocalDateTime;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class Notice {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
+public class Notice extends BaseEntity {
     private String title;
 
     @Column(columnDefinition = "TEXT")
     private String content;
-
-    private LocalDateTime createdAt;
-
-    @PrePersist
-    protected void prePersist() {
-        this.createdAt = LocalDateTime.now();
-    }
-
 }

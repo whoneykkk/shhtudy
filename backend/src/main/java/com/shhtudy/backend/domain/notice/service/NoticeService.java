@@ -80,7 +80,7 @@ public class NoticeService {
         return NoticeResponseDto.builder()
                 .title(notice.getTitle())
                 .content(notice.getContent())
-                .createdAt(notice.getCreatedAt().toString())
+                .createdAt(notice.getCreatedAt())
                 .build();
     }
 

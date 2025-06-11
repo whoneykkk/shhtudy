@@ -1,8 +1,11 @@
 package com.shhtudy.backend.domain.notice.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
+
+import java.time.LocalDateTime;
 
 @Getter
 @Builder
@@ -10,5 +13,6 @@ import lombok.Getter;
 public class NoticeResponseDto {
     private final String title;
     private final String content;
-    private final String createdAt;
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy.MM.dd HH:mm")
+    private LocalDateTime createdAt;
 }
