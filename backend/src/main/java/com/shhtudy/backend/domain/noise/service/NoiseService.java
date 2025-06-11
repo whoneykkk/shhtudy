@@ -45,6 +45,11 @@ public class NoiseService {
         //로그 조회
         List<NoiseEvent> events = noiseEventRepository.findByUserAndMeasuredAtBetween(
                 user, dto.getCheckinTime(), dto.getCheckoutTime());
+        // 세션 시간 검증
+        if (!session.getCheckinTime().equals(dto.getCheckinTime()) ||
+                !session.getCheckoutTime().equals(dto.getCheckoutTime())) {
+            throw new IllegalArgumentException("제공된 시간이 세션과 일치하지 않습니다.");
+        }
 
         int abruptCount = countAbruptNoises(events);
         int sessionScore = calculateSessionScore(dto.getAverageDecibel(), dto.getQuietRatio(), abruptCount);
@@ -93,11 +98,29 @@ public class NoiseService {
         return count;
     }
 
+    private static final double EXCELLENT_QUIET_RATIO = 0.9;
+    private static final double GOOD_QUIET_RATIO = 0.7;
+
+    private static final double EXCELLENT_AVG_DB = 40.0;
+    private static final double GOOD_AVG_DB = 50.0;
+
+    private static final int EXCELLENT_ABRUPT_COUNT = 0;
+    private static final int GOOD_ABRUPT_COUNT = 2;
+
+    private static final int EXCELLENT_SCORE = 5;
+    private static final int GOOD_SCORE = 3;
+
     private int calculateSessionScore(double avgDb, double quietRatio, int abruptCount) {
         int score = 0;
-        score += (quietRatio >= 0.9) ? 5 : (quietRatio >= 0.7 ? 3 : 0);
-        score += (avgDb <= 40) ? 5 : (avgDb <= 50 ? 3 : 0);
-        score += (abruptCount == 0) ? 5 : (abruptCount <= 2 ? 3 : 0);
+        score += (quietRatio >= EXCELLENT_QUIET_RATIO) ? EXCELLENT_SCORE :
+                (quietRatio >= GOOD_QUIET_RATIO) ? GOOD_SCORE : 0;
+
+        score += (avgDb <= EXCELLENT_AVG_DB) ? EXCELLENT_SCORE :
+                (avgDb <= GOOD_AVG_DB) ? GOOD_SCORE : 0;
+
+        score += (abruptCount <= EXCELLENT_ABRUPT_COUNT) ? EXCELLENT_SCORE :
+                (abruptCount <= GOOD_ABRUPT_COUNT) ? GOOD_SCORE : 0;
+
         return Math.max(-15, Math.min(15, score));
     }
 
