@@ -1,7 +1,9 @@
 package com.shhtudy.backend.domain.noise.controller;
 
 import com.shhtudy.backend.domain.noise.dto.NoiseEventRequestDto;
+import com.shhtudy.backend.domain.noise.dto.NoiseReportResponseDto;
 import com.shhtudy.backend.domain.noise.dto.NoiseSessionRequestDto;
+import com.shhtudy.backend.domain.noise.dto.MannerScoreResponseDto;
 import com.shhtudy.backend.domain.noise.service.NoiseService;
 import com.shhtudy.backend.global.response.ResponseCustom;
 import com.shhtudy.backend.domain.user.entity.User;
@@ -39,10 +41,15 @@ public class NoiseController {
         return ResponseCustom.OK("세션 종료 및 통계 저장 완료");
     }
 
-    @PutMapping("/score")
-    @Operation(summary = "점수 및 티어 계산", description = "인증된 사용자의 점수 및 등급을 다시 계산합니다.")
-    public ResponseCustom<Void> calculateScoreAndTier(@AuthenticationPrincipal User user) {
-        noiseService.recalculateUserScoreAndGrade(user);
-        return ResponseCustom.OK("점수 및 등급이 재계산되었습니다.");
+    @GetMapping("/report")
+    @Operation(summary = "소음 리포트 조회", description = "가장 최근 소음 세션의 통계 리포트를 조회합니다.")
+    public ResponseCustom<NoiseReportResponseDto> getReport(@AuthenticationPrincipal User user) {
+        return ResponseCustom.OK(noiseService.getNoiseReport(user));
+    }
+
+    @GetMapping("/manner")
+    @Operation(summary = "매너 점수 조회", description = "현재 사용자의 누적 포인트, 등급, 평균 데시벨, 소음 이벤트 횟수를 조회합니다.")
+    public ResponseCustom<MannerScoreResponseDto> getMannerScore(@AuthenticationPrincipal User user) {
+        return ResponseCustom.OK(noiseService.getMannerScore(user));
     }
 }

@@ -1,5 +1,6 @@
 package com.shhtudy.backend.domain.noise.entity;
 
+import com.shhtudy.backend.domain.noise.dto.NoiseEventSummaryDto;
 import com.shhtudy.backend.domain.user.entity.User;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.persistence.*;

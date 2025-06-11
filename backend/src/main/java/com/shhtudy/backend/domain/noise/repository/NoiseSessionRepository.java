@@ -16,4 +16,6 @@ public interface NoiseSessionRepository extends JpaRepository<NoiseSession, Long
 
     // 아직 닫히지 않은 가장 최근 세션만 조회
     Optional<NoiseSession> findTopByUserAndCheckoutTimeIsNullOrderByCheckinTimeDesc(User user);
+
+    Optional<NoiseSession> findTopByUserAndCheckoutTimeIsNotNullOrderByCheckoutTimeDesc(User user);
 }
