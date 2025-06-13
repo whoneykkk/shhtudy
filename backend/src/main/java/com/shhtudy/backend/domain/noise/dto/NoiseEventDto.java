@@ -1,5 +1,6 @@
 package com.shhtudy.backend.domain.noise.dto;
 
+import com.shhtudy.backend.domain.noise.entity.NoiseEvent;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
@@ -16,4 +17,11 @@ public class NoiseEventDto {
 
     @Schema(description = "측정 시각", example = "2025-06-04T15:30:00")
     private LocalDateTime measuredAt;
+
+    public static NoiseEventDto from(NoiseEvent event) {
+        return NoiseEventDto.builder()
+                .decibel(event.getDecibel())
+                .measuredAt(event.getMeasuredAt())
+                .build();
+    }
 }
