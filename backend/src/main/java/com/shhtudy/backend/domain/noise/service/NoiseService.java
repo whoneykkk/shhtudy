@@ -1,5 +1,7 @@
 package com.shhtudy.backend.domain.noise.service;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import com.shhtudy.backend.domain.noise.dto.*;
 import com.shhtudy.backend.domain.noise.entity.NoiseEvent;
 import com.shhtudy.backend.domain.noise.entity.NoiseSession;
@@ -13,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
 
@@ -210,15 +213,26 @@ public class NoiseService {
             summary = "전체 소음 로그 조회",
             description = "가장 최근 세션의 모든 소음 로그(45dB 초과)를 반환합니다."
     )
-    @Transactional
-    public NoiseEventListDto getAllNoiseLogs(User user) {
+    @Transactional(readOnly = true)
+    public Page<NoiseEventDto> getAllNoiseLogs(
+            User user,
+            LocalDateTime from,
+            LocalDateTime to,
+            Pageable pageable) {
+
         NoiseSession session = noiseSessionRepository
                 .findTopByUserAndCheckoutTimeIsNotNullOrderByCheckoutTimeDesc(user)
                 .orElseThrow(() -> new IllegalArgumentException("종료된 세션이 없습니다."));
 
-        List<NoiseEvent> events = noiseEventRepository
-                .findBySessionAndDecibelGreaterThan(session, QUIET_THRESHOLD_DB);
-
-        return NoiseEventListDto.from(events);
+        if (from != null && to != null) {
+            return noiseEventRepository
+                    .findBySessionAndDecibelGreaterThanAndMeasuredAtBetween(
+                            session, QUIET_THRESHOLD_DB, from, to, pageable)
+                    .map(NoiseEventDto::from);
+        } else {
+            return noiseEventRepository
+                    .findBySessionAndDecibelGreaterThan(session, QUIET_THRESHOLD_DB, pageable)
+                    .map(NoiseEventDto::from);
+        }
     }
 }

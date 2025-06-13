@@ -1,3 +1,4 @@
+/*
 package com.shhtudy.backend.domain.noise.dto;
 
 import com.shhtudy.backend.domain.noise.entity.NoiseEvent;
@@ -6,6 +7,7 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Getter
 @Builder
@@ -24,10 +26,12 @@ public class NoiseEventListDto {
                         .decibel(event.getDecibel())
                         .measuredAt(event.getMeasuredAt())
                         .build())
-                .toList();
+                .collect(Collectors.toList());
+
         return NoiseEventListDto.builder()
                 .totalCount(dtoList.size())
                 .events(dtoList)
                 .build();
     }
 }
+*/

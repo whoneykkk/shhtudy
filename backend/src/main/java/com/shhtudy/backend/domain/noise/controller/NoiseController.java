@@ -12,7 +12,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
@@ -76,9 +81,17 @@ public class NoiseController {
     @GetMapping("/logs")
     @Operation(
             summary = "전체 소음 로그 조회",
-            description = "가장 최근 세션의 모든 소음 로그(45dB 초과)를 반환합니다."
+            description = "가장 최근 세션의 소음 로그를 페이지 단위로 조회하고, 날짜 필터링도 지원합니다."
     )
-    public ResponseCustom<NoiseEventListDto> getNoiseLogs(@AuthenticationPrincipal User user) {
-        return ResponseCustom.OK(noiseService.getAllNoiseLogs(user));
+    public ResponseCustom<Page<NoiseEventDto>> getNoiseLogs(
+            @AuthenticationPrincipal User user,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) LocalDateTime from,
+            @RequestParam(required = false) LocalDateTime to) {
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by("measuredAt").descending());
+
+        return ResponseCustom.OK(noiseService.getAllNoiseLogs(user, from, to, pageable));
     }
 }
