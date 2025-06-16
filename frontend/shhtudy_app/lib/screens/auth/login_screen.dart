@@ -109,7 +109,7 @@ class _LoginScreenState extends State<LoginScreen> {
       await prefs.setString('last_phone_number', phoneController.text);
       
       // 백엔드 서버로 요청 보내기
-      final url = Uri.parse('${ApiConfig.baseUrl}/auth/login');
+      final url = Uri.parse('${ApiConfig.baseUrl}/api/auth/login');
       print('로그인 요청 URL: $url');
       
       try {

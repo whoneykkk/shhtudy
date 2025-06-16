@@ -17,21 +17,26 @@ class MessageService {
       }
 
       final response = await http.get(
-        Uri.parse('$baseUrl/messages?type=$type'),
+        Uri.parse('$baseUrl/api/messages?type=$type'),
         headers: {
           'Authorization': 'Bearer $token',
         },
       );
 
       if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
-        if (data['success'] == true && data['data'] != null) {
-          // 페이지 형태의 응답에서 content 배열 추출
-          if (data['data']['content'] != null) {
-            return List<Map<String, dynamic>>.from(data['data']['content']);
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        if (responseData['data'] != null) {
+          // 응답 데이터가 content 배열을 포함하는 경우
+          if (responseData['data'] is Map && responseData['data']['content'] != null) {
+            return List<Map<String, dynamic>>.from(responseData['data']['content']);
           }
-          return List<Map<String, dynamic>>.from(data['data']);
+          print('메시지 응답이 페이지 형태가 아닙니다');
+          return [];
         }
+        return [];
+      } else if (response.statusCode == 404) {
+        // 404 에러는 메시지가 없다는 의미로 처리
+        return [];
       }
       
       throw Exception('쪽지 목록 로드 실패: ${response.statusCode}');
@@ -61,16 +66,16 @@ class MessageService {
       }
 
       final response = await http.get(
-        Uri.parse('$baseUrl/messages/$messageIdStr'),
+        Uri.parse('$baseUrl/api/messages/$messageIdStr'),
         headers: {
           'Authorization': 'Bearer $token',
         },
       );
 
       if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
-        if (data['success'] == true && data['data'] != null) {
-          return data['data'];
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        if (responseData['data'] != null) {
+          return responseData['data'];
         }
       }
       
@@ -100,7 +105,7 @@ class MessageService {
       }
 
       final response = await http.post(
-        Uri.parse('$baseUrl/messages/$messageIdStr/reply'),
+        Uri.parse('$baseUrl/api/messages/$messageIdStr/reply'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -111,8 +116,7 @@ class MessageService {
       );
 
       if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
-        return data['success'] == true;
+        return true;
       }
       
       throw Exception('답장 전송 실패: ${response.statusCode}');
@@ -131,7 +135,7 @@ class MessageService {
       }
 
       final response = await http.post(
-        Uri.parse('$baseUrl/messages/seats/$seatId'),
+        Uri.parse('$baseUrl/api/seats/$seatId/message'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -142,8 +146,7 @@ class MessageService {
       );
 
       if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
-        return data['success'] == true;
+        return true;
       }
       
       throw Exception('쪽지 전송 실패: ${response.statusCode}');
@@ -162,26 +165,23 @@ class MessageService {
       }
 
       final response = await http.get(
-        Uri.parse('$baseUrl/messages/unread-count'),
+        Uri.parse('$baseUrl/api/messages/unread-count'),
         headers: {
           'Authorization': 'Bearer $token',
         },
       );
 
       if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
-        if (data['success'] == true && data['data'] != null) {
-          return data['data'] as int;
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        if (responseData['data'] != null) {
+          return responseData['data'] as int;
         }
       }
       
       throw Exception('읽지 않은 쪽지 수 조회 실패: ${response.statusCode}');
     } catch (e) {
       print('읽지 않은 쪽지 수 조회 중 오류: $e');
-      // Mock 데이터에서 읽지 않은 쪽지 수 계산
-      return MyPageScreen.tempMessages
-          .where((message) => !message.isRead && !message.isSent)
-          .length;
+      throw e;
     }
   }
 
@@ -204,15 +204,14 @@ class MessageService {
       }
 
       final response = await http.delete(
-        Uri.parse('$baseUrl/messages/$messageIdStr'),
+        Uri.parse('$baseUrl/api/messages/$messageIdStr'),
         headers: {
           'Authorization': 'Bearer $token',
         },
       );
 
       if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
-        return data['success'] == true;
+        return true;
       }
       
       throw Exception('쪽지 삭제 실패: ${response.statusCode}');
@@ -241,20 +240,14 @@ class MessageService {
       }
 
       final response = await http.post(
-        Uri.parse('$baseUrl/messages/$messageIdStr/read'),
+        Uri.parse('$baseUrl/api/messages/$messageIdStr/read'),
         headers: {
           'Authorization': 'Bearer $token',
         },
       );
 
       if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
-        final success = data['success'] == true;
-        if (success) {
-          // 읽음 처리 성공 시 알림 상태 업데이트
-          AlertService.updateAlertStatus();
-        }
-        return success;
+        return true;
       }
       
       throw Exception('쪽지 읽음 처리 실패: ${response.statusCode}');
@@ -273,7 +266,7 @@ class MessageService {
       }
 
       final response = await http.post(
-        Uri.parse('$baseUrl/messages/read-all'),
+        Uri.parse('$baseUrl/api/messages/read-all'),
         headers: {
           'Authorization': 'Bearer $token',
         },

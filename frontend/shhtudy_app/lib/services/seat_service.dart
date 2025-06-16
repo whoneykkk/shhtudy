@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
 import '../services/user_service.dart';
@@ -6,6 +7,28 @@ import '../services/message_service.dart';
 
 class SeatService {
   static final String baseUrl = ApiConfig.baseUrl;
+  static Timer? _refreshTimer;
+  static final _seatController = StreamController<List<Map<String, dynamic>>>.broadcast();
+  static Stream<List<Map<String, dynamic>>> get seatStream => _seatController.stream;
+
+  // 자동 갱신 시작
+  static void startAutoRefresh() {
+    _refreshTimer?.cancel();
+    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (timer) async {
+      try {
+        final seats = await getAllSeats();
+        _seatController.add(seats);
+      } catch (e) {
+        print('좌석 자동 갱신 중 오류: $e');
+      }
+    });
+  }
+
+  // 자동 갱신 중지
+  static void stopAutoRefresh() {
+    _refreshTimer?.cancel();
+    _refreshTimer = null;
+  }
 
   // 모든 좌석 현황 조회 (등급별 접근 가능 여부 포함)
   static Future<List<Map<String, dynamic>>> getAllSeats() async {
@@ -16,24 +39,23 @@ class SeatService {
       }
 
       final response = await http.get(
-        Uri.parse('$baseUrl/seats'),
+        Uri.parse('$baseUrl/api/seats'),
         headers: {
           'Authorization': 'Bearer $token',
         },
       );
 
       if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
-        if (data['success'] == true && data['data'] != null) {
-          return List<Map<String, dynamic>>.from(data['data']);
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        if (responseData['data'] != null) {
+          return List<Map<String, dynamic>>.from(responseData['data']);
         }
       }
       
       throw Exception('좌석 현황 조회 실패: ${response.statusCode}');
     } catch (e) {
       print('좌석 현황 조회 중 오류: $e');
-      // Mock 데이터 반환
-      return _getMockSeatData();
+      throw e;
     }
   }
 
@@ -46,26 +68,23 @@ class SeatService {
       }
 
       final response = await http.get(
-        Uri.parse('$baseUrl/seats/zone/$zone'),
+        Uri.parse('$baseUrl/api/seats/zone/$zone'),
         headers: {
           'Authorization': 'Bearer $token',
         },
       );
 
       if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
-        if (data['success'] == true && data['data'] != null) {
-          return List<Map<String, dynamic>>.from(data['data']);
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        if (responseData['data'] != null) {
+          return List<Map<String, dynamic>>.from(responseData['data']);
         }
       }
       
       throw Exception('$zone구역 좌석 조회 실패: ${response.statusCode}');
     } catch (e) {
       print('$zone구역 좌석 조회 중 오류: $e');
-      // Mock 데이터에서 해당 구역만 필터링
-      return _getMockSeatData().where((seat) => 
-        seat['locationCode'].toString().startsWith(zone.toUpperCase())
-      ).toList();
+      throw e;
     }
   }
 
@@ -78,30 +97,28 @@ class SeatService {
       }
 
       final response = await http.get(
-        Uri.parse('$baseUrl/seats/accessible-zones'),
+        Uri.parse('$baseUrl/api/seats/accessible-zones'),
         headers: {
           'Authorization': 'Bearer $token',
         },
       );
 
       if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
-        if (data['success'] == true && data['data'] != null) {
-          return List<String>.from(data['data']);
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        if (responseData['data'] != null) {
+          return List<String>.from(responseData['data']);
         }
       }
       
       throw Exception('접근 가능한 구역 조회 실패: ${response.statusCode}');
     } catch (e) {
       print('접근 가능한 구역 조회 중 오류: $e');
-      // 기본값으로 모든 구역 반환
-      return ['A', 'B', 'C', 'D'];
+      throw e;
     }
   }
 
   // 특정 좌석으로 쪽지 보내기
   static Future<bool> sendMessageToSeat(int seatId, String content) async {
-    // MessageService의 sendToSeat 메서드를 사용하여 중복 제거
     return await MessageService.sendToSeat(seatId, content);
   }
 
@@ -113,7 +130,7 @@ class SeatService {
       case 'B':
         return ['SILENT', 'GOOD'].contains(userGrade.toUpperCase()); // A, B등급만
       case 'C':
-      case 'D':
+      case 'F':
         return true; // 모든 등급
       default:
         return false;
@@ -134,57 +151,6 @@ class SeatService {
       default:
         return '아직 접근할 수 없는 구역입니다.';
     }
-  }
-
-  // Mock 데이터 생성 (백엔드 API 실패 시 대체용)
-  static List<Map<String, dynamic>> _getMockSeatData() {
-    List<Map<String, dynamic>> seats = [];
-    
-    // A구역 (16개) - A등급만 접근 가능
-    for (int i = 1; i <= 16; i++) {
-      seats.add({
-        'seatId': i,
-        'locationCode': 'A-$i',
-        'status': i % 4 == 0 ? 'EMPTY' : (i % 4 == 1 ? 'SILENT' : (i % 4 == 2 ? 'GOOD' : 'WARNING')),
-        'accessible': false, // 기본적으로 접근 불가로 설정 (사용자 등급에 따라 변경)
-        'accessibilityMessage': 'A구역은 A등급(조용함) 사용자만 이용 가능합니다.',
-      });
-    }
-    
-    // B구역 (21개) - A, B등급 접근 가능
-    for (int i = 1; i <= 21; i++) {
-      seats.add({
-        'seatId': 16 + i,
-        'locationCode': 'B-$i',
-        'status': i % 4 == 0 ? 'EMPTY' : (i % 4 == 1 ? 'SILENT' : (i % 4 == 2 ? 'GOOD' : 'WARNING')),
-        'accessible': true, // B구역은 대부분 접근 가능
-        'accessibilityMessage': '접근 가능',
-      });
-    }
-    
-    // C구역 (16개) - 모든 등급 접근 가능
-    for (int i = 1; i <= 16; i++) {
-      seats.add({
-        'seatId': 37 + i,
-        'locationCode': 'C-$i',
-        'status': i % 4 == 0 ? 'EMPTY' : (i % 4 == 1 ? 'SILENT' : (i % 4 == 2 ? 'GOOD' : 'WARNING')),
-        'accessible': true,
-        'accessibilityMessage': '접근 가능',
-      });
-    }
-    
-    // D구역 (11개) - 모든 등급 접근 가능
-    for (int i = 1; i <= 11; i++) {
-      seats.add({
-        'seatId': 53 + i,
-        'locationCode': 'D-$i',
-        'status': i % 4 == 0 ? 'EMPTY' : (i % 4 == 1 ? 'SILENT' : (i % 4 == 2 ? 'GOOD' : 'WARNING')),
-        'accessible': true,
-        'accessibilityMessage': '접근 가능',
-      });
-    }
-    
-    return seats;
   }
 
   // 호환성을 위한 별칭 메서드

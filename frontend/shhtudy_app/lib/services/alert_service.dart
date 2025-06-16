@@ -64,11 +64,11 @@ class AlertService {
       if (token != null) {
         try {
           final response = await http.get(
-            Uri.parse('$baseUrl/alerts/unread-status'), // API 엔드포인트를 update-status에서 unread-status로 변경
+            Uri.parse('$baseUrl/api/alerts/unread-status'),
             headers: {
               'Authorization': 'Bearer $token',
             },
-          ).timeout(const Duration(seconds: 3)); // 짧은 타임아웃 설정
+          ).timeout(const Duration(seconds: 3));
           
           if (response.statusCode == 200) {
             final Map<String, dynamic> data = json.decode(response.body);

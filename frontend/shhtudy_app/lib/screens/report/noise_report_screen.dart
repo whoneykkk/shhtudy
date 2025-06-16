@@ -18,15 +18,13 @@ class NoiseReportScreen extends StatefulWidget {
 }
 
 class _NoiseReportScreenState extends State<NoiseReportScreen> {
-  // 현재 페이지 인덱스 추적
-  int _currentPageIndex = 0;
-  final PageController _pageController = PageController(initialPage: 0);
+  // 현재 페이지 인덱스 추적 및 PageController는 단일 차트이므로 완전히 제거합니다.
+  // int _currentPageIndex = 0;
+  // final PageController _pageController = PageController(initialPage: 0);
   
   // 차트 타입 리스트
   final List<String> _chartTypes = [
     '일간 소음 변동 Line Chart',
-    '주간 소음 추이 Line/Bar Chart',
-    '좌석별 소음 비율 Bar Chart',
   ];
 
   // 데이터 상태 변수
@@ -145,7 +143,7 @@ class _NoiseReportScreenState extends State<NoiseReportScreen> {
 
   @override
   void dispose() {
-    _pageController.dispose();
+    // PageController가 없으므로 dispose할 필요가 없습니다.
     super.dispose();
   }
 
@@ -331,7 +329,7 @@ class _NoiseReportScreenState extends State<NoiseReportScreen> {
                                   child: Row(
                                     children: [
                                       Text(
-                                        _chartTypes[_currentPageIndex],
+                                        _chartTypes[0], // 이제 항상 첫 번째 차트 타입
                                         style: TextStyle(
                                           color: AppTheme.primaryColor,
                                           fontWeight: FontWeight.bold,
@@ -343,44 +341,11 @@ class _NoiseReportScreenState extends State<NoiseReportScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 16),
-                                // 차트 페이지뷰
+                                // PageView 대신 단일 차트 직접 표시
                                 SizedBox(
                                   height: 250,
-                                  child: PageView(
-                                    controller: _pageController,
-                                    onPageChanged: (index) {
-                                      setState(() {
-                                        _currentPageIndex = index;
-                                      });
-                                    },
-                                    children: [
-                                      _buildDailyNoiseLineChart(),
-                                      _buildWeeklyNoiseChart(),
-                                      _buildSeatNoiseBarChart(),
-                                    ],
-                                  ),
-                                ),
-                                // 페이지 인디케이터 추가
-                                Padding(
-                                  padding: const EdgeInsets.only(bottom: 16, top: 8),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: List.generate(
-                                      _chartTypes.length,
-                                      (index) => Container(
-                                        width: 8,
-                                        height: 8,
-                                        margin: const EdgeInsets.symmetric(horizontal: 4),
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          color: index == _currentPageIndex
-                                              ? AppTheme.primaryColor
-                                              : AppTheme.primaryColor.withOpacity(0.2),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
+                                  child: _buildDailyNoiseLineChart(),
+                                ),                           
                               ],
                             ),
                           ),
@@ -597,16 +562,6 @@ class _NoiseReportScreenState extends State<NoiseReportScreen> {
                                                     borderRadius: BorderRadius.circular(4),
                                                   ),
                                                 ),
-                                                // 전체 평균 마커
-                                                Positioned(
-                                                  left: MediaQuery.of(context).size.width * (_avgQuietnessPercentage / 100) * 0.7,
-                                                  top: 0,
-                                                  bottom: 0,
-                                                  child: Container(
-                                                    width: 2,
-                                                    color: Colors.orange,
-                                                  ),
-                                                ),
                                               ],
                                             ),
                                           ),
@@ -624,7 +579,7 @@ class _NoiseReportScreenState extends State<NoiseReportScreen> {
                                               ),
                                               const SizedBox(width: 4),
                                               Text(
-                                                '전체 평균: ${_avgQuietnessPercentage}%',
+                                                '내 조용 비율: ${_quietnessPercentage}%',
                                                 style: TextStyle(
                                                   fontSize: 12,
                                                   color: AppTheme.textColor.withOpacity(0.5),
@@ -787,44 +742,12 @@ class _NoiseReportScreenState extends State<NoiseReportScreen> {
 
   // 소음 비율에 따른 피드백 메시지
   String _getFeedbackMessage(int quietPercentage) {
-    // 전체 평균과의 차이 계산
-    final int difference = quietPercentage - _avgQuietnessPercentage;
-    
-    // 절대적 기준과 상대적 기준 모두 고려
     if (quietPercentage >= 80) {
-      if (difference >= 5) {
-        // 조용 비율이 매우 높고, 평균보다 더 높은 경우
-        return '오늘 하루 집중하기 딱 좋은 환경이었어요. 멋진 분위기, 최고예요!';
-      } else if(difference >= -5){
-        // 조용 비율이 매우 높지만, 평균과 비슷하거나 낮은 경우
-        return '오늘 하루 집중하기 좋은 환경이었어요. 다른 분들도 모두 집중하는 분위기었네요!';
-      }
-      else{
-        // 조용 비율이 매우 높지만, 평균과 비슷하거나 낮은 경우
-        return '가끔 집중이 잘 되지 않는 날도 있죠. 모두의 작은 배려로 더 좋은 공간이 될 수 있어요!';
-      }
+      return '오늘 하루 집중하기 딱 좋은 환경이었어요. 멋진 분위기, 최고예요!';
     } else if (quietPercentage >= 70) {
-      if (difference >= 5) {
-        // 조용 비율이 적당히 높고, 평균보다 더 높은 경우
-        return '좋은 하루였어요. 주변보다 더 조용한 환경을 유지하셨네요!';
-      } else if (difference >= -5) {
-        // 조용 비율이 적당히 높고, 평균과 비슷한 경우
-        return '좋은 하루였어요. 모두의 작은 배려로 더 좋은 공간이 될 수 있어요!';
-      } else {
-        // 조용 비율이 적당히 높지만, 평균보다 낮은 경우
-        return '가끔 집중이 잘 되지 않는 날도 있죠. 모두의 작은 배려로 더 좋은 공간이 될 수 있어요!';
-      }
+      return '좋은 하루였어요. 모두의 작은 배려로 더 좋은 공간이 될 수 있어요!';
     } else {
-      if (difference >= 0) {
-        // 조용 비율이 낮지만, 평균보다는 높거나 같은 경우 (드문 경우)
-        return '오늘은 전체적으로 시끄러운 환경이었네요. 모두의 작은 배려로 더 좋은 공간이 될 수 있어요!';
-      } else if (difference >= -10) {
-        // 조용 비율이 낮고, 평균보다 조금 낮은 경우
-        return '오늘은 조금 시끄러운 환경이었네요. 모두의 작은 배려로 더 좋은 공간이 될 수 있어요!';
-      } else {
-        // 조용 비율이 낮고, 평균보다 많이 낮은 경우
-        return '때로는 소란스러울 수도 있죠. 다음에는 모두 함께 더 좋은 공간을 만들어나가요.';
-      }
+      return '가끔 집중이 잘 되지 않는 날도 있죠. 모두의 작은 배려로 더 좋은 공간이 될 수 있어요!';
     }
   }
 
@@ -967,76 +890,6 @@ class _NoiseReportScreenState extends State<NoiseReportScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  // 주간 소음 추이 Line/Bar Chart 위젯
-  Widget _buildWeeklyNoiseChart() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '주간 데이터는 아직 준비 중입니다',
-            style: TextStyle(
-              color: AppTheme.textColor.withOpacity(0.7),
-              fontSize: 14,
-            ),
-          ),
-          const SizedBox(height: 8),
-          // 샘플 UI 표시
-          Container(
-            height: 200,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              color: AppTheme.backgroundColor.withOpacity(0.5),
-            ),
-            child: Center(
-              child: Icon(
-                Icons.bar_chart,
-                size: 80,
-                color: AppTheme.primaryColor.withOpacity(0.3),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // 좌석별 소음 비율 Bar Chart 위젯
-  Widget _buildSeatNoiseBarChart() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '좌석별 데이터는 아직 준비 중입니다',
-            style: TextStyle(
-              color: AppTheme.textColor.withOpacity(0.7),
-              fontSize: 14,
-            ),
-          ),
-          const SizedBox(height: 8),
-          // 샘플 UI 표시
-          Container(
-            height: 200,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              color: AppTheme.backgroundColor.withOpacity(0.5),
-            ),
-            child: Center(
-              child: Icon(
-                Icons.grid_view,
-                size: 80,
-                color: AppTheme.primaryColor.withOpacity(0.3),
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

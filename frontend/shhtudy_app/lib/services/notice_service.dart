@@ -10,8 +10,8 @@ class NoticeService {
   // API 기본 URL
   static final String baseUrl = ApiConfig.baseUrl;
 
-  // 모든 공지사항 가져오기
-  static Future<List<Notice>> getAllNotices() async {
+  // 공지사항 목록 조회
+  static Future<List<Map<String, dynamic>>> getNotices() async {
     try {
       final token = await UserService.getToken();
       if (token == null) {
@@ -19,30 +19,39 @@ class NoticeService {
       }
 
       final response = await http.get(
-        Uri.parse('$baseUrl/notices'),
+        Uri.parse('$baseUrl/api/notices'),
         headers: {
           'Authorization': 'Bearer $token',
         },
       );
 
+      print('공지사항 API 응답 상태 코드: ${response.statusCode}');
+      print('공지사항 API 응답 본문: ${response.body}');
+
       if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
-        if (data['success'] == true && data['data'] != null) {
-          final List<dynamic> noticesJson = data['data'];
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        print('공지사항 데이터 구조: ${responseData.runtimeType}');
+        
+        if (responseData['data'] != null) {
+          print('data 필드 타입: ${responseData['data'].runtimeType}');
           
-          // 정적 리스트 업데이트 (기존 코드와의 호환성 유지)
-          MyPageScreen.tempNotices = noticesJson.map((json) {
-            return Notice.fromJson(json);
-          }).toList();
-          
-          return MyPageScreen.tempNotices;
+          // 페이지 형태의 응답인지 확인
+          if (responseData['data'] is Map && responseData['data']['content'] != null) {
+            final content = responseData['data']['content'];
+            print('content 필드 타입: ${content.runtimeType}');
+            return List<Map<String, dynamic>>.from(content);
+          }
+          print('공지사항 응답이 페이지 형태가 아닙니다');
+          return [];
         }
+        print('공지사항 데이터 없음');
+        return []; // 데이터가 없는 경우 빈 리스트 반환
       }
       
       throw Exception('공지사항 로드 실패: ${response.statusCode}');
     } catch (e) {
       print('공지사항 로드 중 오류: $e');
-      return [];
+      throw e;
     }
   }
 
@@ -55,7 +64,7 @@ class NoticeService {
       }
 
       final response = await http.post(
-        Uri.parse('$baseUrl/notices/$noticeId/read'),
+        Uri.parse('$baseUrl/api/notices/$noticeId/read'),
         headers: {
           'Authorization': 'Bearer $token',
         },
@@ -116,6 +125,36 @@ class NoticeService {
     } catch (e) {
       print('모든 공지사항 읽음 처리 중 오류: $e');
       return false;
+    }
+  }
+
+  // 공지사항 상세 조회
+  static Future<Map<String, dynamic>> getNoticeDetail(int noticeId) async {
+    try {
+      final token = await UserService.getToken();
+      if (token == null) {
+        throw Exception('인증 토큰이 없습니다.');
+      }
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/notices/$noticeId'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        if (responseData['data'] != null) {
+          return responseData['data'];
+        }
+        throw Exception('공지사항 상세 데이터가 없습니다.');
+      }
+      
+      throw Exception('공지사항 상세 조회 실패: ${response.statusCode}');
+    } catch (e) {
+      print('공지사항 상세 조회 중 오류: $e');
+      throw e;
     }
   }
 } 
