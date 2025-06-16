@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../auth/login_screen.dart';
-import 'notice_screen.dart';
-import 'message_screen.dart';
+import '../../services/notice_service.dart';
+import '../../services/message_service.dart';
 import '../../models/user_profile.dart';
 import '../../services/user_service.dart';
 import '../../services/alert_service.dart';
@@ -12,6 +12,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:async';
+import 'package:shhtudy_app/screens/mypage/notice_screen.dart';
+import 'package:shhtudy_app/screens/mypage/message_screen.dart';
 
 // 공지사항 모델 클래스
 class Notice {
@@ -37,13 +40,13 @@ class Notice {
   // JSON 데이터로부터 객체 생성 (API 응답 처리용)
   factory Notice.fromJson(Map<String, dynamic> json, {bool? isReadStatus}) {
     return Notice(
-      id: json['noticeId'] ?? 0,  // 백엔드에서 noticeId로 전송
+      id: json['id'] ?? 0,  // 백엔드에서 id로 전송
       title: json['title'] ?? '',
-      content: json['content'] ?? '',
+      content: json['previewContent'] ?? '',  // content 대신 previewContent 사용
       createdAt: json['createdAt'] != null 
           ? _parseBackendDateTime(json['createdAt']) 
           : DateTime.now(),
-      isRead: isReadStatus ?? json['isRead'] ?? false,  // 백엔드에서 isRead로 전송
+      isRead: isReadStatus ?? json['isRead'] ?? false,
     );
   }
   
@@ -101,14 +104,8 @@ class Message {
   
   // JSON 데이터로부터 객체 생성 (API 응답 처리용)
   factory Message.fromJson(Map<String, dynamic> json, String currentUserId) {
-    // 백엔드 MessageListResponseDto 구조에 맞춤
-    // 로그에서 sentByMe로 나타나므로 두 가지 모두 확인
-    final bool isSentMessage = json['sentByMe'] ?? json['isSentByMe'] ?? false;
-    
-    // 디버깅용 로그 추가
-    print('Message.fromJson - sentByMe: ${json['sentByMe']}, isSentByMe: ${json['isSentByMe']}, 최종값: $isSentMessage');
-    
-    // 디버깅 로그 제거 (성능 개선)
+    // 백엔드에서 보내주는 sentByMe만 사용
+    final bool isSentMessage = json['sentByMe'] ?? false;
     
     // sentAt 파싱 처리 개선
     DateTime parsedSentAt;
@@ -177,11 +174,21 @@ class _MyPageScreenState extends State<MyPageScreen> {
   // 상세 정보 표시 여부
   bool _showDetailStats = false;
 
+  // 남은 시간을 표시하기 위한 변수 및 타이머 (분 단위)
+  late int _currentRemainingTimeMinutes; // 분 단위
+  Timer? _timer;
+
   @override
   void initState() {
     super.initState();
     _loadUserProfile();
     _fetchNoticesAndMessages(); // 데이터베이스에서 공지사항과 메시지 불러오기
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel(); // 위젯이 dispose될 때 타이머 해제
+    super.dispose();
   }
 
   // 데이터베이스에서 공지사항과 메시지 불러오기
@@ -202,7 +209,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
       
       // 공지사항 API 호출
       final noticesResponse = await http.get(
-        Uri.parse('$baseUrl/notices'),
+        Uri.parse('$baseUrl/api/notices'),
         headers: {
           'Authorization': 'Bearer $token',
         },
@@ -210,7 +217,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
 
       // 메시지 API 호출
       final messagesResponse = await http.get(
-        Uri.parse('$baseUrl/messages'),
+        Uri.parse('$baseUrl/api/messages'),
         headers: {
           'Authorization': 'Bearer $token',
         },
@@ -218,61 +225,59 @@ class _MyPageScreenState extends State<MyPageScreen> {
 
       if (noticesResponse.statusCode == 200) {
         final Map<String, dynamic> noticesData = json.decode(noticesResponse.body);
-        if (noticesData['success'] == true && noticesData['data'] != null) {
-          final List<dynamic> noticesJson = noticesData['data'];
-          
-          // 정적 리스트 업데이트
-          MyPageScreen.tempNotices = noticesJson.map((json) {
-            return Notice.fromJson(json);
-          }).toList();
+        if (noticesData['data'] != null) {
+          final dynamic responseData = noticesData['data'];
+          if (responseData is Map && responseData.containsKey('content')) {
+            // 페이지 형태의 응답
+            final List<dynamic> noticesJson = responseData['content'];
+            MyPageScreen.tempNotices = noticesJson.map((json) {
+              return Notice.fromJson(json);
+            }).toList();
+            print('공지사항 로드 성공: ${MyPageScreen.tempNotices.length}개');
+          } else {
+            print('공지사항 응답이 페이지 형태가 아닙니다: ${responseData.runtimeType}');
+            MyPageScreen.tempNotices = [];
+          }
+        } else {
+          print('공지사항 데이터 없음');
+          MyPageScreen.tempNotices = [];
         }
+      } else {
+        print('공지사항 로드 실패: ${noticesResponse.statusCode}');
+        MyPageScreen.tempNotices = [];
       }
 
       if (messagesResponse.statusCode == 200) {
         final Map<String, dynamic> messagesData = json.decode(messagesResponse.body);
-        print('MyPageScreen 메시지 API 응답: $messagesData'); // 디버깅용
-        
-        if (messagesData['success'] == true && messagesData['data'] != null) {
-          // 페이지 형태의 응답인지 확인
+        if (messagesData['data'] != null) {
           final dynamic responseData = messagesData['data'];
-          List<dynamic> messagesJson;
-          
           if (responseData is Map && responseData.containsKey('content')) {
             // 페이지 형태의 응답
-            messagesJson = responseData['content'];
-            print('MyPageScreen 페이지 형태 응답 - 총 메시지 수: ${responseData['totalElements']}');
-          } else if (responseData is List) {
-            // 리스트 형태의 응답
-            messagesJson = responseData;
+            final List<dynamic> messagesJson = responseData['content'];
+            final String currentUserId = await _getCurrentUserId();
+            MyPageScreen.tempMessages = messagesJson.map((json) {
+              return Message.fromJson(json, currentUserId);
+            }).toList();
+            print('메시지 로드 성공: ${MyPageScreen.tempMessages.length}개');
           } else {
-            print('MyPageScreen 예상치 못한 응답 형태: ${responseData.runtimeType}');
-            messagesJson = [];
+            print('메시지 응답이 페이지 형태가 아닙니다: ${responseData.runtimeType}');
+            MyPageScreen.tempMessages = [];
           }
-          
-          final String currentUserId = await _getCurrentUserId();
-          print('MyPageScreen 현재 사용자 ID: $currentUserId'); // 디버깅용
-          print('MyPageScreen 받은 메시지 개수: ${messagesJson.length}'); // 디버깅용
-          
-          // 정적 리스트 업데이트
-          MyPageScreen.tempMessages = messagesJson.map((json) {
-            return Message.fromJson(json, currentUserId);
-          }).toList();
-          
-          print('MyPageScreen 파싱된 메시지 개수: ${MyPageScreen.tempMessages.length}'); // 디버깅용
+        } else {
+          print('메시지 데이터 없음');
+          MyPageScreen.tempMessages = [];
         }
+      } else {
+        print('메시지 로드 실패: ${messagesResponse.statusCode}');
+        MyPageScreen.tempMessages = [];
       }
 
-      // 알림 카운트 업데이트
-      _loadNotificationCounts();
+      // 데이터 로드 후 알림 상태 업데이트
+      await _checkUnreadAlerts();
       
-      if (mounted) {
-        setState(() {
-          isLoading = false;
-        });
-      }
     } catch (e) {
       print('공지사항/메시지 로딩 오류: $e');
-      
+    } finally {
       if (mounted) {
         setState(() {
           isLoading = false;
@@ -281,86 +286,75 @@ class _MyPageScreenState extends State<MyPageScreen> {
     }
   }
   
-  // 현재 사용자 ID 가져오기
-  Future<String> _getCurrentUserId() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('user_id') ?? '';
-  }
-
-  // 알림 정보 불러오기
-  Future<void> _loadNotificationCounts() async {
-    setState(() {
-      unreadNoticeCount = MyPageScreen.tempNotices.where((notice) => !notice.isRead).length;
-      unreadMessageCount = MyPageScreen.tempMessages
-          .where((message) => !message.isRead && !message.isSent)
-          .length;
-    });
-    
-    // 알림 상태 변경을 모든 화면에 알림
-    AlertService.updateAlertStatus();
-  }
-
-  // 사용자 프로필 정보 불러오기
+  // 사용자 프로필 로드
   Future<void> _loadUserProfile() async {
-    setState(() {
-      isLoading = true;
-    });
-
     try {
-      // 서버에서 최신 프로필 정보 가져오기
       final profile = await UserService.getUserProfile();
-      
-      if (!mounted) return; // 위젯이 아직 유효한지 확인
-      
-      if (profile != null) {
+      if (mounted) {
         setState(() {
           userProfile = profile;
-          isLoading = false;
-        });
-      } else {
-        // 서버에서 프로필을 가져오지 못한 경우
-        setState(() {
-          isLoading = false;
-        });
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('세션이 만료되었습니다. 다시 로그인해주세요.'),
-            duration: Duration(seconds: 3),
-          ),
-        );
-        
-        // 로그인 화면으로 이동
-        Future.delayed(const Duration(seconds: 1), () {
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(builder: (context) => const LoginScreen()),
-            (route) => false,
-          );
+          // 프로필 로드 후 남은 시간 (초)을 분으로 변환하여 초기화 및 타이머 시작
+          _currentRemainingTimeMinutes = ((userProfile?.remainingTime ?? 0) / 60).ceil();
+          _startRemainingTimeTimer();
         });
       }
     } catch (e) {
-      if (!mounted) return;
-      
-      print('프로필 로딩 오류: $e');
+      print('사용자 프로필 로딩 오류: $e');
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
+    }
+  }
+
+  // 읽지 않은 알림 확인
+  Future<void> _checkUnreadAlerts() async {
+    final unreadStatus = await AlertService.updateAlertStatus();
+    if (mounted) {
       setState(() {
-        isLoading = false;
+        unreadNoticeCount = MyPageScreen.tempNotices.where((notice) => !notice.isRead).length;
+        unreadMessageCount = MyPageScreen.tempMessages
+            .where((message) => !message.isRead && !message.isSent)
+            .length;
       });
-      
-      // 오류 발생 시 로그인 화면으로 이동
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('사용자 정보를 찾을 수 없습니다. 다시 로그인해주세요.'),
-          duration: Duration(seconds: 3),
-        ),
-      );
-      
-      Future.delayed(const Duration(seconds: 1), () {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => const LoginScreen()),
-          (route) => false,
-        );
+    }
+  }
+
+  // 현재 사용자 UID 가져오기
+  Future<String> _getCurrentUserId() async {
+    // Firebase 인증 정보에서 UID 가져오기
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      return user.uid;
+    } else {
+      // SharedPreferences에서 사용자 ID 가져오기 (이전 로그인 방식)
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString('userId') ?? 'unknown';
+    }
+  }
+
+  // 남은 시간 포맷팅 (분 단위)
+  String _formatRemainingTimeMinutes(int minutes) {
+    if (minutes <= 0) {
+      return '0분 남음';
+    }
+    return '${minutes}분 남음';
+  }
+
+  // 남은 시간 감소 타이머 시작 (분 단위)
+  void _startRemainingTimeTimer() {
+    _timer?.cancel(); // 기존 타이머가 있다면 취소
+    if (_currentRemainingTimeMinutes > 0) {
+      _timer = Timer.periodic(const Duration(minutes: 1), (timer) {
+        if (mounted) {
+          setState(() {
+            _currentRemainingTimeMinutes--;
+            if (_currentRemainingTimeMinutes <= 0) {
+              _timer?.cancel();
+            }
+          });
+        }
       });
     }
   }
@@ -446,10 +440,10 @@ class _MyPageScreenState extends State<MyPageScreen> {
   void _showAllNotices(BuildContext context) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const NoticeScreen()),
+      MaterialPageRoute(builder: (context) => NoticeScreen()),
     ).then((_) {
       // 화면으로 돌아왔을 때 상태 즉시 업데이트
-      _loadNotificationCounts();
+      _checkUnreadAlerts();
       setState(() {
         // 이미 Notice 화면에서 나올 때 읽음 처리가 되었을 것임
       });
@@ -459,97 +453,110 @@ class _MyPageScreenState extends State<MyPageScreen> {
   void _showAllMessages(BuildContext context) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const MessageScreen()),
-    ).then((_) {
-      // 화면으로 돌아왔을 때 상태 즉시 업데이트
-      _loadNotificationCounts();
-      setState(() {
-        // 이미 Message 화면에서 나올 때 읽음 처리가 되었을 것임
-      });
+      MaterialPageRoute(builder: (context) => MessageScreen()),
+    ).then((shouldRefresh) {
+      if (shouldRefresh == true) {
+        // 쪽지 화면에서 삭제가 발생한 경우 새로고침
+        _checkUnreadAlerts();
+      }
     });
   }
 
-  void _showNoticeDetail(BuildContext context, Notice notice) {
-    // 공지사항 읽음 처리
-    setState(() {
-      for (int i = 0; i < MyPageScreen.tempNotices.length; i++) {
-        if (MyPageScreen.tempNotices[i].id == notice.id) {
-          MyPageScreen.tempNotices[i] = Notice(
-            id: notice.id,
-            title: notice.title,
-            content: notice.content,
-            createdAt: notice.createdAt,
-            isRead: true,
-          );
-          break;
-        }
-      }
+  void _showNoticeDetail(BuildContext context, Notice notice) async {
+    try {
+      print('공지사항 상세 조회 요청 ID: ${notice.id}');
       
-      // 읽지 않은 공지사항 개수 업데이트
-      _loadNotificationCounts();
-    });
-    
-    // 백엔드 API를 통해 읽음 처리 (향후 구현)
-    _markNoticeAsReadApi(notice.id);
+      String contentToDisplay = notice.content; // 기본적으로 미리보기 내용을 사용
+      
+      if (notice.id != 0) {
+        // ID가 유효하면 상세 내용 조회 시도
+        final noticeDetail = await NoticeService.getNoticeDetail(notice.id);
+        contentToDisplay = noticeDetail['content'] ?? notice.content; // 상세 내용이 없으면 미리보기 내용 사용
+      } else {
+        // ID가 0인 경우 상세 내용을 가져올 수 없음을 알림
+        contentToDisplay = "상세 내용을 불러올 수 없습니다. \n\n" + notice.content;
+      }
 
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
+      // 공지사항 열람 시 즉시 읽음 처리 (id가 0이 아니면 읽음 처리 시도)
+      if (notice.id != 0) {
+        _markNoticeAsReadApi(notice.id);
+        _fetchNoticesAndMessages();
+      }
+
+      if (!context.mounted) return;
+
+      showDialog(
+        context: context,
+        builder: (context) => Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        notice.title,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  notice.formattedDate,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppTheme.textColor.withOpacity(0.6),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Divider(
+                  color: AppTheme.textColor.withOpacity(0.1),
+                  thickness: 1,
+                ),
+                const SizedBox(height: 16),
+                ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.of(context).size.height * 0.5, // 화면 높이의 50%로 제한
+                  ),
+                  child: SingleChildScrollView(
                     child: Text(
-                      notice.title,
+                      contentToDisplay,
                       style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        height: 1.6,
                       ),
                     ),
                   ),
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Text(
-                notice.formattedDate,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AppTheme.textColor.withOpacity(0.6),
                 ),
-              ),
-              const SizedBox(height: 16),
-              Divider(
-                color: AppTheme.textColor.withOpacity(0.1),
-                thickness: 1,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                notice.content,
-                style: const TextStyle(
-                  fontSize: 14,
-                  height: 1.6,
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
-      ),
-    );
+      );
+    } catch (e) {
+      print('공지사항 상세 조회 중 오류: $e');
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('공지사항 상세 내용을 불러올 수 없습니다.'), backgroundColor: Colors.red),
+      );
+    }
   }
   
   // 백엔드 API를 통해 공지사항 읽음 처리
@@ -579,89 +586,89 @@ class _MyPageScreenState extends State<MyPageScreen> {
     }
   }
 
-  void _showMessageDetail(BuildContext context, Message message) {
-    // 쪽지 읽음 처리 (받은 쪽지만)
-    if (!message.isSent) {
-      setState(() {
-        for (int i = 0; i < MyPageScreen.tempMessages.length; i++) {
-          if (MyPageScreen.tempMessages[i].messageId == message.messageId && !MyPageScreen.tempMessages[i].isSent) {
-            MyPageScreen.tempMessages[i] = Message(
-              messageId: message.messageId,
-              senderId: message.senderId,
-              receiverId: message.receiverId,
-              content: message.content,
-              sentAt: message.sentAt,
-              isRead: true,
-              isSent: message.isSent,
-              counterpartDisplayName: message.counterpartDisplayName,
-            );
-            break;
-          }
-        }
-        
-        // 읽지 않은 메시지 개수 업데이트
-        _loadNotificationCounts();
-      });
+  Future<void> _showMessageDetail(BuildContext context, Message message) async {
+    try {
+      print('쪽지 상세 조회 요청 ID: ${message.messageId}');
       
-      // 백엔드 API를 통해 읽음 처리 (향후 구현)
-      _markMessageAsReadApi(message.messageId);
-    }
+      String contentToDisplay = message.content; // 미리보기 내용을 기본으로 사용
+      
+      if (message.messageId != 0) {
+        final detailMessage = await MessageService.getMessageDetail(message.messageId);
+        contentToDisplay = detailMessage?['content'] ?? message.content;
+      } else {
+        contentToDisplay = "상세 내용을 불러올 수 없습니다. \n\n" + message.content;
+      }
+      
+      // 쪽지 열람 시 읽음 처리
+      if (!message.isRead) {
+        await _markMessageAsReadApi(message.messageId);
+        _fetchNoticesAndMessages();
+      }
 
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Text(
-                    message.contactSeatId,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
+      if (!context.mounted) return;
+
+      showDialog(
+        context: context,
+        builder: (context) => Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  message.counterpartDisplayName,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
                   ),
-                  const Spacer(),
-                  Text(
-                    message.formattedDate,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppTheme.textColor.withOpacity(0.6),
-                    ),
+                ),
+                const SizedBox(height: 16),
+                ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.of(context).size.height * 0.5, // 화면 높이의 50%로 제한
                   ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text(
-                message.content,
-                style: const TextStyle(fontSize: 14),
-              ),
-              const SizedBox(height: 20),
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text(
-                    '닫기',
-                    style: TextStyle(
-                      color: AppTheme.primaryColor,
-                      fontWeight: FontWeight.bold,
+                  child: SingleChildScrollView(
+                    child: Text(
+                      contentToDisplay,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        height: 1.6,
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text(
+                        '닫기',
+                        style: TextStyle(
+                          color: AppTheme.primaryColor,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
-      ),
-    );
+      );
+    } catch (e) {
+      print('쪽지 상세 조회 중 오류: $e');
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('쪽지 상세 내용을 불러올 수 없습니다.'), backgroundColor: Colors.red),
+      );
+    }
   }
   
   // 백엔드 API를 통해 메시지 읽음 처리
@@ -1082,7 +1089,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                               child: _buildStatCardGridItem(
                                                 icon: Icons.timer,
                                                 title: '남은 시간',
-                                                value: _formatRemainingTime(userProfile?.remainingTime ?? 0),
+                                                value: _formatRemainingTimeMinutes(_currentRemainingTimeMinutes),
                                                 iconColor: AppTheme.primaryColor,
                                               ),
                                             ),
@@ -1362,6 +1369,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                                   color: AppTheme.textColor.withOpacity(0.3),
                                                   fontSize: 14,
                                                 ),
+
                                               ),
                                             ),
                                             // 쪽지 내용
@@ -1564,14 +1572,6 @@ class _MyPageScreenState extends State<MyPageScreen> {
     }
   }
 
-  // 남은 시간 포맷팅
-  String _formatRemainingTime(int seconds) {
-    final hours = seconds ~/ 3600;
-    final minutes = (seconds % 3600) ~/ 60;
-    
-    return '${hours}시간 ${minutes}분';
-  }
-
   // 승급까지 남은 포인트 계산
   String _getPointsToNextGrade(String? grade) {
     if (grade == null) return '0 P';
@@ -1581,13 +1581,13 @@ class _MyPageScreenState extends State<MyPageScreen> {
     switch (grade.toUpperCase()) {
       case 'WARNING': // C등급
         final remainingPoints = 300 - userPoints;
-        return remainingPoints <= 0 ? '승급 가능' : '$remainingPoints P';
+        return remainingPoints <= 0 ? '승급 가능' : '${remainingPoints} P';
       case 'GOOD': // B등급
         final remainingPoints = 700 - userPoints;
-        return remainingPoints <= 0 ? '승급 가능' : '$remainingPoints P';
+        return remainingPoints <= 0 ? '승급 가능' : '${remainingPoints} P';
       case 'SILENT': // A등급 (최고 등급)
         final remainingPoints = 1000 - userPoints;
-        return remainingPoints <= 0 ? '최고 등급' : '$remainingPoints P';
+        return remainingPoints <= 0 ? '최고 등급' : '${remainingPoints} P';
       default:
         return '0 P';
     }
@@ -1618,11 +1618,4 @@ class _MyPageScreenState extends State<MyPageScreen> {
         return '';
     }
   }
-
-  @override
-  void dispose() {
-    // 화면에서 벗어날 때 알림 상태 업데이트
-    AlertService.updateAlertStatus();
-    super.dispose();
-  }
-} 
+}

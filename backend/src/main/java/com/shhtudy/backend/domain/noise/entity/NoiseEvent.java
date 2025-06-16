@@ -27,6 +27,11 @@ public class NoiseEvent {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+ // 소음 세션 엔티티와 연결. 실행하는데 오류뜨길래 추가했는데 이상하면 지우렴
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "session_id", nullable = false)
+    private NoiseSession session;
+
     @Schema(description = "측정된 데시벨 값", example = "55.0")
     @Column(nullable = false)
     private double decibel;

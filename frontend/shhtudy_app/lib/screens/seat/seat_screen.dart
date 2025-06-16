@@ -49,7 +49,7 @@ class _SeatScreenState extends State<SeatScreen> {
   String? currentSeatCode;
   String selectedZone = 'A';
   String? _cachedUserId;
-  final List<String> zones = ['A', 'B', 'C', 'D'];
+  final List<String> zones = ['A', 'B', 'C', 'F'];
   final TextEditingController _messageController = TextEditingController();
   bool hasUnreadAlerts = false;
   bool isLoading = false;
@@ -63,6 +63,14 @@ class _SeatScreenState extends State<SeatScreen> {
   void initState() {
     super.initState();
     _initializeData();
+    SeatService.startAutoRefresh(); // 자동 갱신 시작
+  }
+
+  @override
+  void dispose() {
+    SeatService.stopAutoRefresh(); // 자동 갱신 중지
+    _messageController.dispose();
+    super.dispose();
   }
 
   // 데이터 초기화 (순서 중요)
@@ -72,6 +80,17 @@ class _SeatScreenState extends State<SeatScreen> {
     await _loadUserProfile(); // 먼저 사용자 프로필 로드
     await _loadAccessibleZones(); // 그 다음 접근 가능한 구역 로드 (사용자 등급 기반)
     await _loadSeatsData(); // 마지막으로 좌석 데이터 로드
+
+    // 좌석 상태 변화 구독
+    SeatService.seatStream.listen((seats) {
+      if (mounted) {
+        setState(() {
+          currentZoneSeats = seats.where((seat) => 
+            seat['locationCode'].toString().startsWith(selectedZone.toUpperCase())
+          ).toList();
+        });
+      }
+    });
   }
 
   // 사용자 프로필 로드
@@ -111,7 +130,7 @@ class _SeatScreenState extends State<SeatScreen> {
     } catch (e) {
       print('접근 가능한 구역 로딩 오류: $e');
       setState(() {
-        accessibleZones = ['A', 'B', 'C', 'D']; // 기본값
+        accessibleZones = ['A', 'B', 'C', 'F']; // 기본값
       });
     }
   }
@@ -168,7 +187,7 @@ class _SeatScreenState extends State<SeatScreen> {
   // 메시지 목록 새로고침 (MessageService 사용)
   Future<void> _refreshMessagesInMyPage() async {
     try {
-      final messageDataList = await MessageService.getMessageList();
+      final messageDataList = await MessageService.getMessageList(type: 'all');
       final currentUserId = await _getCurrentUserId();
       
       // MyPageScreen의 정적 리스트 업데이트
@@ -208,7 +227,7 @@ class _SeatScreenState extends State<SeatScreen> {
     }
   }
 
-  // 좌석 클릭 처리 (쪽지 보내기만 가능 - 데모 앱이므로 좌석 배정/해제는 키오스크에서)
+  // 좌석 클릭 처리
   void _handleSeatTap(Map<String, dynamic> seat) {
     final String locationCode = seat['locationCode'];
     final String status = seat['status'];
@@ -261,12 +280,6 @@ class _SeatScreenState extends State<SeatScreen> {
         ],
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    _messageController.dispose();
-    super.dispose();
   }
 
   // 스낵바 표시 헬퍼 메서드 추가
@@ -425,6 +438,65 @@ class _SeatScreenState extends State<SeatScreen> {
               ],
             ),
           ),
+        );
+      },
+    );
+  }
+
+  // 좌석 상태 표시 위젯
+  Widget _buildSeatStatusWidget(Map<String, dynamic> seat) {
+    final String status = seat['status'];
+    final bool isMySeat = status == 'MY_SEAT';
+    
+    return Container(
+      decoration: BoxDecoration(
+        color: getStatusColor(status),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              seat['locationCode'],
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            if (isMySeat) ...[
+              SizedBox(height: 2),
+              Text(
+                '내 좌석',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 좌석 그리드 위젯
+  Widget _buildSeatGrid() {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 5,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
+        childAspectRatio: 1.5,
+      ),
+      itemCount: currentZoneSeats.length,
+      itemBuilder: (context, index) {
+        final seat = currentZoneSeats[index];
+        return GestureDetector(
+          onTap: () => _handleSeatTap(seat),
+          child: _buildSeatStatusWidget(seat),
         );
       },
     );
@@ -743,60 +815,7 @@ class _SeatScreenState extends State<SeatScreen> {
                                       ),
                                     ),
                                   )
-                                : GridView.builder(
-                                    shrinkWrap: true,
-                                    physics: const NeverScrollableScrollPhysics(),
-                                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                      crossAxisCount: 5,
-                                      crossAxisSpacing: 8,
-                                      mainAxisSpacing: 8,
-                                      childAspectRatio: 1.5,
-                                    ),
-                                    itemCount: currentZoneSeats.length,
-                                    itemBuilder: (context, index) {
-                                      final seat = currentZoneSeats[index];
-                                      final bool isAccessible = seat['accessible'] ?? true;
-                                      final bool isMyCurrentSeat = seat['locationCode'] == currentSeatCode;
-                                      final String status = seat['status'];
-                                      
-                                      return GestureDetector(
-                                        onTap: () => _handleSeatTap(seat),
-                                          child: Container(
-                                            decoration: BoxDecoration(
-                                              color: getStatusColor(seat['status']),
-                                              borderRadius: BorderRadius.circular(12),
-                                              border: isMyCurrentSeat
-                                                  ? Border.all(
-                                                      color: const Color(0xFF5E6198),
-                                                      width: 4,
-                                                        )
-                                                      : null,
-                                            ),
-                                            child: Center(
-                                              child: Column(
-                                                mainAxisAlignment: MainAxisAlignment.center,
-                                                children: [
-                                                  Text(
-                                                    seat['locationCode'],
-                                                    style: const TextStyle(
-                                                      color: Colors.white,
-                                                      fontWeight: FontWeight.bold,
-                                                      fontSize: 12,
-                                                    ),
-                                                  ),
-                                                if (status != 'EMPTY' && status != 'MY_SEAT')
-                                                    Icon(
-                                                      Icons.email_outlined,
-                                                      color: Colors.white,
-                                                      size: 10,
-                                                    ),
-                                                ],
-                                            ),
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  ),
+                                : _buildSeatGrid(),
                               const SizedBox(height: 16),
                               Divider(
                                 color: AppTheme.primaryColor.withOpacity(0.2),

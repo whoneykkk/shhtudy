@@ -27,8 +27,13 @@ public class NoiseService {
 
     // 소음 이벤트 저장
     public void saveNoiseEvent(User user, NoiseEventRequestDto dto) {
+        // 현재 진행 중인 세션 조회. 마찬가지로 오류뜨길래 추가함 필요럾음 지우렴렴
+        NoiseSession session = noiseSessionRepository.findTopByUserAndCheckoutTimeIsNullOrderByCheckinTimeDesc(user)
+                .orElseThrow(() -> new IllegalArgumentException("진행 중인 세션이 없습니다."));
+
         NoiseEvent event = NoiseEvent.builder()
                 .user(user)
+                .session(session)
                 .decibel(dto.getDecibel())
                 .measuredAt(dto.getMeasuredAt())
                 .build();

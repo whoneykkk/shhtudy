@@ -60,7 +60,7 @@ class NoiseService {
       }
 
       final response = await http.get(
-        Uri.parse('$baseUrl/noise-logs'),
+        Uri.parse('$baseUrl/api/noise-logs'),
         headers: {
           'Authorization': 'Bearer $token',
         },
@@ -81,9 +81,36 @@ class NoiseService {
     }
   }
 
-  // 기존 getNoiseLogs 메소드는 호환성을 위해 유지
+  // 소음 로그 조회
   static Future<List<Map<String, dynamic>>> getNoiseLogs() async {
-    return await getNoiseSessionLogs();
+    try {
+      final token = await UserService.getToken();
+      if (token == null) {
+        throw Exception('인증 토큰이 없습니다.');
+      }
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/noise/report'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        if (responseData['data'] != null) {
+          // 리포트 데이터를 리스트 형태로 변환
+          final reportData = responseData['data'];
+          return [reportData]; // 단일 리포트를 리스트로 변환
+        }
+        return []; // 데이터가 없는 경우 빈 리스트 반환
+      }
+      
+      throw Exception('소음 로그 조회 실패: ${response.statusCode}');
+    } catch (e) {
+      print('소음 로그 조회 중 오류: $e');
+      throw e;
+    }
   }
 
   // 내 좌석의 실시간 소음 레벨 가져오기 (아직 API 없어서 더미 데이터 반환)

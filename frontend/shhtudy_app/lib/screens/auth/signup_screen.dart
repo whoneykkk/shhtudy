@@ -94,9 +94,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
     
     try {
       // 모바일 테스트용 IP 주소 사용
-      // 실제 디바이스: 'http://192.168.219.118:8080/users'
-      // 안드로이드 에뮬레이터: 'http://10.0.2.2:8080/users'
-      final url = Uri.parse('http://10.0.2.2:8080/users');
+      // 실제 디바이스: 'http://192.168.219.118:8080/api/users'
+      // 안드로이드 에뮬레이터: 'http://10.0.2.2:8080/api/users'
+      final url = Uri.parse('http://10.0.2.2:8080/api/users');
       print('회원가입 요청 URL: $url');
       
       // 비밀번호와 확인 비밀번호 일치 여부 확인
@@ -129,7 +129,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       firebaseUser = _auth.currentUser; // 생성된 사용자 참조 저장
       
       // 토큰이 없으면 오류 처리
-      if (firebaseToken == null) {
+      if (firebaseToken == null || firebaseUser == null) {
         setState(() {
           isLoading = false;
         });
@@ -140,6 +140,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       print('Firebase 토큰 발급 완료');
       print('토큰 길이: ${firebaseToken.length}');
       print('토큰 미리보기: ${firebaseToken.substring(0, math.min(20, firebaseToken.length))}...');
+      print('Firebase UID: ${firebaseUser.uid}');
       
       // 백엔드 서버로 요청 보내기
       print('백엔드 서버로 회원가입 요청 시작');
@@ -149,9 +150,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
           url,
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': 'Bearer $firebaseToken',
+            'Authorization': firebaseToken,
           },
           body: jsonEncode({
+            'firebaseUid': firebaseUser.uid,  // Firebase UID 추가
             'name': nameController.text,
             'nickname': userIdController.text,
             'phoneNumber': phoneController.text,
@@ -182,7 +184,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           if (response.body.isNotEmpty) {
             final responseData = jsonDecode(response.body);
             
-            if (response.statusCode == 200 && responseData['success'] == true) {
+            if (response.statusCode == 200) {
               // 회원가입 성공
               print('회원가입 성공!');
               ScaffoldMessenger.of(context).showSnackBar(
@@ -195,7 +197,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 MaterialPageRoute(builder: (context) => const LoginScreen()),
               );
             } else {
-              // 응답 코드가 200이 아니거나 success가 false인 경우
+              // 응답 코드가 200이 아닌 경우
               final message = responseData['message'] ?? "알 수 없는 오류가 발생했습니다.";
               print('회원가입 실패: $message');
               

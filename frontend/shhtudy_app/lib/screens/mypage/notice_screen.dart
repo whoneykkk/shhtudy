@@ -28,26 +28,19 @@ class _NoticeScreenState extends State<NoticeScreen> {
   
   // 공지사항 데이터를 서버에서 로드
   Future<void> _loadNotices() async {
-    setState(() {
-      isLoading = true;
-    });
-    
     try {
-      // NoticeService를 사용하여 공지사항 로드
-      final notices = await NoticeService.getAllNotices();
-      
-      if (mounted) {
-        setState(() {
-          isLoading = false;
-        });
-      }
+      setState(() {
+        isLoading = true;
+      });
+      final notices = await NoticeService.getNotices();
+      setState(() {
+        isLoading = false;
+      });
     } catch (e) {
-      print('공지사항 로딩 오류: $e');
-      if (mounted) {
-        setState(() {
-          isLoading = false;
-        });
-      }
+      print('공지사항 로드 중 오류: $e');
+      setState(() {
+        isLoading = false;
+      });
     }
   }
 
@@ -95,68 +88,132 @@ class _NoticeScreenState extends State<NoticeScreen> {
     });
   }
 
-  void _showNoticeDetail(BuildContext context, Notice notice) {
-    // 공지사항 열람 시 즉시 읽음 처리
-    _markAsRead(notice);
-    
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      notice.title,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+  void _showNoticeDetail(BuildContext context, Notice notice) async {
+    try {
+      print('공지사항 상세 조회 요청 ID: ${notice.id}');
+      
+      String contentToDisplay = notice.content; // 기본적으로 미리보기 내용을 사용
+      
+      if (notice.id != 0) {
+        // ID가 유효하면 상세 내용 조회 시도
+        final noticeDetail = await NoticeService.getNoticeDetail(notice.id);
+        contentToDisplay = noticeDetail['content'] ?? notice.content; // 상세 내용이 없으면 미리보기 내용 사용
+      } else {
+        // ID가 0인 경우 상세 내용을 가져올 수 없음을 알림
+        contentToDisplay = "상세 내용을 불러올 수 없습니다. \n\n" + notice.content;
+      }
+
+      // 공지사항 열람 시 즉시 읽음 처리 (id가 0이 아니면 읽음 처리 시도)
+      if (notice.id != 0) {
+        _markAsRead(notice);
+      }
+      
+      if (!context.mounted) return;
+      
+      showDialog(
+        context: context,
+        builder: (context) => Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  notice.title,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  contentToDisplay,  // 수정된 내용 표시
+                  style: const TextStyle(
+                    fontSize: 14,
+                    height: 1.6,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text(
+                        '닫기',
+                        style: TextStyle(
+                          color: AppTheme.primaryColor,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
-                  ),
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Text(
-                notice.formattedDate,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AppTheme.textColor.withOpacity(0.6),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 16),
-              Divider(
-                color: AppTheme.textColor.withOpacity(0.1),
-                thickness: 1,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                notice.content,
-                style: const TextStyle(
-                  fontSize: 14,
-                  height: 1.6,
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
-      ),
-    );
+      );
+    } catch (e) {
+      print('공지사항 상세 조회 중 오류: $e');
+      if (!context.mounted) return;
+      
+      // 오류 발생 시 미리보기 내용으로 대체
+      showDialog(
+        context: context,
+        builder: (context) => Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  notice.title,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  "상세 내용을 불러올 수 없습니다. \n\n" + notice.content,  // 오류 메시지와 미리보기 내용
+                  style: const TextStyle(
+                    fontSize: 14,
+                    height: 1.6,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text(
+                        '닫기',
+                        style: TextStyle(
+                          color: AppTheme.primaryColor,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
   }
 
   @override
@@ -196,7 +253,28 @@ class _NoticeScreenState extends State<NoticeScreen> {
         ),
         body: isLoading
             ? Center(child: CircularProgressIndicator())
-            : ListView.builder(
+            : MyPageScreen.tempNotices.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.notifications_off_outlined,
+                          size: 48,
+                          color: AppTheme.textColor.withOpacity(0.3),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          '공지사항이 없습니다',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: AppTheme.textColor.withOpacity(0.5),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
           padding: const EdgeInsets.all(16),
           itemCount: MyPageScreen.tempNotices.length,
           itemBuilder: (context, index) {

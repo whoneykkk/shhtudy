@@ -174,20 +174,26 @@ class _MessageScreenState extends State<MessageScreen> {
   // 메시지 삭제
   Future<void> _deleteMessage(Message message) async {
     try {
-      await MessageService.deleteMessage(message.messageId);
-      await AlertService.updateAlertStatus();
-      await _loadMessages(); // 새로고침
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('메시지가 삭제되었습니다.'), backgroundColor: AppTheme.primaryColor),
-        );
+      final success = await MessageService.deleteMessage(message.messageId);
+      if (success) {
+        // 메시지 목록에서 삭제
+        setState(() {
+          MyPageScreen.tempMessages.removeWhere((m) => m.messageId == message.messageId);
+        });
+        
+        // 마이페이지의 쪽지 섹션 업데이트를 위해 상태 변경
+        if (mounted) {
+          Navigator.pop(context, true);  // true를 반환하여 마이페이지에서 새로고침하도록 함
+        }
       }
     } catch (e) {
-      print('메시지 삭제 오류: $e');
+      print('쪽지 삭제 중 오류: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('삭제에 실패했습니다.'), backgroundColor: Colors.red),
+          const SnackBar(
+            content: Text('쪽지 삭제에 실패했습니다.'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }

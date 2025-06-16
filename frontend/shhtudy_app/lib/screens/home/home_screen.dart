@@ -838,21 +838,16 @@ class _HomeScreenState extends State<HomeScreen> {
             _localRemainingTime = _localRemainingTime! - 1;
           });
           
-          // 10분마다 서버와 동기화
-          if (_localRemainingTime! % 600 == 0) {
-            _loadUserProfile();
-          }
-          
-          // 시간이 0이 되면 알림 (좌석 해제는 서버에서 처리)
+          // 시간이 0이 되면 알림
           if (_localRemainingTime == 0) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('이용 시간이 만료되었습니다. 좌석이 자동으로 해제됩니다.'),
+                content: Text('이용 시간이 만료되었습니다. 추가 시간을 구매하거나 퇴실해주세요.'),
                 backgroundColor: Colors.red,
                 duration: Duration(seconds: 5),
               ),
             );
-            // 프로필 새로고침으로 좌석 해제 상태 반영
+            // 프로필 새로고침으로 실제 남은 시간 확인
             Future.delayed(const Duration(seconds: 2), () {
               _loadUserProfile();
             });

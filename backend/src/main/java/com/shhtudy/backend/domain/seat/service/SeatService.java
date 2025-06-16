@@ -19,7 +19,7 @@ public class SeatService {
      * 구역별 등급 제한 검증
      * A구역: SILENT만
      * B구역: SILENT, GOOD만  
-     * C,D구역: 모든 등급
+     * C,F구역: 모든 등급
      */
     public boolean canUserAccessZone(String zone, User.Grade userGrade) {
         switch (zone.toUpperCase()) {
@@ -28,7 +28,7 @@ public class SeatService {
             case "B":
                 return userGrade == User.Grade.SILENT || userGrade == User.Grade.GOOD; // A, B등급만
             case "C":
-            case "D":
+            case "F":
                 return true; // 모든 등급 가능
             default:
                 return false;
@@ -41,11 +41,11 @@ public class SeatService {
     public List<String> getAccessibleZones(User.Grade userGrade) {
         switch (userGrade) {
             case SILENT: // A등급
-                return Arrays.asList("A", "B", "C", "D"); // 모든 구역 접근 가능
+                return Arrays.asList("A", "B", "C", "F"); // 모든 구역 접근 가능
             case GOOD: // B등급  
-                return Arrays.asList("B", "C", "D"); // B, C, D구역만
+                return Arrays.asList("B", "C", "F"); // B, C, F구역만
             case WARNING: // C등급
-                return Arrays.asList("C", "D"); // C, D구역만
+                return Arrays.asList("C", "F"); // C, F구역만
             default:
                 return Arrays.asList(); // 접근 불가
         }

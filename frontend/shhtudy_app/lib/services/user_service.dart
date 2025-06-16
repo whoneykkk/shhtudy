@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_profile.dart';
 import '../config/api_config.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class UserService {
   // SharedPreferences 키 상수
@@ -51,16 +52,16 @@ class UserService {
       }
       
       final response = await http.get(
-        Uri.parse('$baseUrl/users/profile'),
+        Uri.parse('$baseUrl/api/users/profile'),
         headers: {
           'Authorization': 'Bearer $token',
         },
       );
       
       if (response.statusCode == 200) {
-        final Map<String, dynamic> data = jsonDecode(response.body);
-        if (data['success'] == true && data['data'] != null) {
-          final userData = data['data'];
+        final Map<String, dynamic> responseData = jsonDecode(response.body);
+        if (responseData['data'] != null) {
+          final userData = responseData['data'];
           // 사용자 프로필 정보 생성 및 저장
           final userProfile = UserProfile(
             userId: userData['userId'],
@@ -93,24 +94,8 @@ class UserService {
   // 로그아웃
   static Future<bool> logout() async {
     try {
-      final token = await getAuthToken();
-      
-      // 서버에 로그아웃 요청 (토큰이 있는 경우만)
-      if (token != null) {
-        try {
-          // 네트워크 문제가 있더라도 계속 진행하기 위해 try-catch로 감싸기
-          final response = await http.post(
-            Uri.parse('$baseUrl/users/logout'),
-            headers: {
-              'Authorization': 'Bearer $token',
-            },
-          ).timeout(const Duration(seconds: 5)); // 짧은 타임아웃 설정
-          
-          print('로그아웃 응답 코드: ${response.statusCode}');
-        } catch (e) {
-          print('서버 로그아웃 요청 실패 (로컬 정리는 계속 진행): $e');
-        }
-      }
+      // Firebase 로그아웃
+      await FirebaseAuth.instance.signOut();
       
       // SharedPreferences에서 모든 사용자 관련 데이터 삭제
       final prefs = await SharedPreferences.getInstance();
@@ -120,25 +105,16 @@ class UserService {
       await prefs.remove(authTokenKey);
       await prefs.remove(firebaseTokenKey);
       
-      // 추가 정보 삭제 (전체 초기화는 아님)
+      // 추가 정보 삭제
       await prefs.remove('user_id');
       await prefs.remove('user_name');
       
-      // 자동 로그인 설정 해제 (마지막 사용 전화번호는 유지)
+      // 자동 로그인 설정 해제
       await prefs.setBool('auto_login', false);
       
       return true;
     } catch (e) {
       print('로그아웃 중 오류: $e');
-      // 오류 발생해도 최소한의 로컬 데이터는 삭제 시도
-      try {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.remove(userProfileKey);
-        await prefs.remove(authTokenKey);
-        await prefs.remove(firebaseTokenKey);
-      } catch (innerError) {
-        print('로그아웃 오류 후 로컬 데이터 삭제 중 추가 오류: $innerError');
-      }
       return false;
     }
   }
