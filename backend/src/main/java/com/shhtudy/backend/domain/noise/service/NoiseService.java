@@ -1,5 +1,7 @@
 package com.shhtudy.backend.domain.noise.service;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import com.shhtudy.backend.domain.noise.dto.*;
 import com.shhtudy.backend.domain.noise.entity.NoiseEvent;
 import com.shhtudy.backend.domain.noise.entity.NoiseSession;
@@ -7,11 +9,13 @@ import com.shhtudy.backend.domain.noise.repository.NoiseEventRepository;
 import com.shhtudy.backend.domain.noise.repository.NoiseSessionRepository;
 import com.shhtudy.backend.domain.user.entity.User;
 import com.shhtudy.backend.domain.user.repository.UserRepository;
+import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
 
@@ -25,7 +29,10 @@ public class NoiseService {
 
     private static final double QUIET_THRESHOLD_DB = 45.0;
 
-    // 소음 이벤트 저장
+    @Operation(
+            summary = "소음 이벤트 저장",
+            description = "실시간 측정된 소음 이벤트를 서버에 저장합니다."
+    )
     public void saveNoiseEvent(User user, NoiseEventRequestDto dto) {
         // 현재 진행 중인 세션 조회. 마찬가지로 오류뜨길래 추가함 필요럾음 지우렴렴
         NoiseSession session = noiseSessionRepository.findTopByUserAndCheckoutTimeIsNullOrderByCheckinTimeDesc(user)
@@ -40,7 +47,10 @@ public class NoiseService {
         noiseEventRepository.save(event);
     }
 
-    // 세션 종료
+    @Operation(
+            summary = "소음 세션 종료 및 통계 저장",
+            description = "소음 세션을 종료하고 통계를 서버에 저장합니다."
+    )
     @Transactional
     public void closeSession(User user, NoiseSessionRequestDto dto) {
         // 세션 조회
@@ -144,6 +154,10 @@ public class NoiseService {
         userRepository.save(user);
     }
 
+    @Operation(
+            summary = "소음 리포트 조회",
+            description = "가장 최근 소음 세션의 통계 리포트를 조회합니다."
+    )
     @Transactional(readOnly = true)
     public NoiseReportResponseDto getNoiseReport(User user) {
         // 가장 최근 종료된 세션 조회
@@ -170,7 +184,7 @@ public class NoiseService {
 
         // 리포트 DTO 생성
         return NoiseReportResponseDto.builder()
-                .grade(user.getGrade().name())
+                .grade(user.getGrade())
                 .avgDecibel(avgDecibel)
                 .maxDecibel(maxDecibel)
                 .eventCount(eventCount)
@@ -179,6 +193,10 @@ public class NoiseService {
                 .build();
     }
 
+    @Operation(
+            summary = "매너 점수 조회",
+            description = "현재 사용자의 누적 포인트, 등급, 평균 데시벨, 소음 이벤트 횟수를 조회합니다."
+    )
     @Transactional(readOnly = true)
     public MannerScoreResponseDto getMannerScore(User user) {
         List<NoiseSession> sessions = noiseSessionRepository.findByUser(user);
@@ -190,9 +208,36 @@ public class NoiseService {
 
         return MannerScoreResponseDto.builder()
                 .point(user.getPoints())
-                .grade(user.getGrade().name())
+                .grade(user.getGrade())
                 .avgDecibel(averageDb)
                 .eventCount(totalOverCount)
                 .build();
+    }
+
+    @Operation(
+            summary = "전체 소음 로그 조회",
+            description = "가장 최근 세션의 모든 소음 로그(45dB 초과)를 반환합니다."
+    )
+    @Transactional(readOnly = true)
+    public Page<NoiseEventDto> getAllNoiseLogs(
+            User user,
+            LocalDateTime from,
+            LocalDateTime to,
+            Pageable pageable) {
+
+        NoiseSession session = noiseSessionRepository
+                .findTopByUserAndCheckoutTimeIsNotNullOrderByCheckoutTimeDesc(user)
+                .orElseThrow(() -> new IllegalArgumentException("종료된 세션이 없습니다."));
+
+        if (from != null && to != null) {
+            return noiseEventRepository
+                    .findBySessionAndDecibelGreaterThanAndMeasuredAtBetween(
+                            session, QUIET_THRESHOLD_DB, from, to, pageable)
+                    .map(NoiseEventDto::from);
+        } else {
+            return noiseEventRepository
+                    .findBySessionAndDecibelGreaterThan(session, QUIET_THRESHOLD_DB, pageable)
+                    .map(NoiseEventDto::from);
+        }
     }
 }

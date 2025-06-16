@@ -1,6 +1,5 @@
 package com.shhtudy.backend.domain.noise.entity;
 
-import com.shhtudy.backend.domain.noise.dto.NoiseEventSummaryDto;
 import com.shhtudy.backend.domain.user.entity.User;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.persistence.*;
@@ -39,4 +38,8 @@ public class NoiseEvent {
     @Schema(description = "측정 시각", example = "2024-03-25T14:30:00")
     @Column(name = "measured_at", nullable = false)
     private LocalDateTime measuredAt;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    @Schema(description = "소음 이벤트 생성 시각", example = "2024-03-25T14:30:00")
+    private LocalDateTime createdAt = LocalDateTime.now();
 }

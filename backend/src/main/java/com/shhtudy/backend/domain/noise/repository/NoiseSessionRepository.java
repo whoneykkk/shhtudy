@@ -11,11 +11,12 @@ import java.util.Optional;
 @Repository
 public interface NoiseSessionRepository extends JpaRepository<NoiseSession, Long> {
 
-    // 최근 전체 세션 조회 (종료된 것 포함)
+    // 사용자별 전체 세션 조회
     List<NoiseSession> findByUser(User user);
 
-    // 아직 닫히지 않은 가장 최근 세션만 조회
+    // 아직 종료되지 않은 가장 최근 세션 조회
     Optional<NoiseSession> findTopByUserAndCheckoutTimeIsNullOrderByCheckinTimeDesc(User user);
 
+    // 종료된 가장 최근 세션 조회
     Optional<NoiseSession> findTopByUserAndCheckoutTimeIsNotNullOrderByCheckoutTimeDesc(User user);
 }
