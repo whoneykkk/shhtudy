@@ -1,5 +1,6 @@
 package com.shhtudy.backend.domain.noise.entity;
 
+import com.shhtudy.backend.domain.common.BaseEntity;
 import com.shhtudy.backend.domain.noise.dto.NoiseEventSummaryDto;
 import com.shhtudy.backend.domain.user.entity.User;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -15,13 +16,8 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Schema(description = "소음 이벤트 엔티티")
-public class NoiseEvent {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Schema(description = "소음 이벤트 고유 ID")
-    private Long id;
+@Schema(description = "소음 초과 이벤트 엔티티")
+public class NoiseEvent extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)

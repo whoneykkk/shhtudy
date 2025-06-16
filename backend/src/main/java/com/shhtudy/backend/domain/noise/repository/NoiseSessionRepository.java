@@ -5,6 +5,7 @@ import com.shhtudy.backend.domain.user.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -17,5 +18,5 @@ public interface NoiseSessionRepository extends JpaRepository<NoiseSession, Long
     // 아직 닫히지 않은 가장 최근 세션만 조회
     Optional<NoiseSession> findTopByUserAndCheckoutTimeIsNullOrderByCheckinTimeDesc(User user);
 
-    Optional<NoiseSession> findTopByUserAndCheckoutTimeIsNotNullOrderByCheckoutTimeDesc(User user);
+    List<NoiseSession> findByUserAndCheckinTimeBetween(User user, LocalDateTime startOfToday, LocalDateTime endOfToday);
 }

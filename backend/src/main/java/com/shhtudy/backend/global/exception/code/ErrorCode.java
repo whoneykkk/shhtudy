@@ -38,6 +38,8 @@ public enum ErrorCode {
     INVALID_SEAT_NUMBER(HttpStatus.BAD_REQUEST, "-5002", "Invalid seat number"),
     NOISE_DATA_NOT_FOUND(HttpStatus.NOT_FOUND, "-5003", "Noise data not found"),
     SEAT_NOT_FOUND(HttpStatus.NOT_FOUND, "-5004", "Seat not found"),
+    NO_SESSION_TODAY(HttpStatus.BAD_REQUEST, "-5005", "오늘 이용 기록이 없습니다."),
+    SESSION_NOT_CHECKED_OUT(HttpStatus.BAD_REQUEST, "-5006", "체크아웃 후 확인할 수 있습니다."),
 
     // 시스템 오류 (-9000 이상)
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "-9001", "서버 내부 오류입니다."),

@@ -17,8 +17,4 @@ public class NoiseEventRequestDto {
     @DecimalMin(value = "0.0", message = "데시벨 값은 0 이상이어야 합니다.")
     @Schema(description = "측정된 데시벨 값", example = "55.0")
     private Double decibel;
-
-    @NotNull
-    @Schema(description = "측정 시각", example = "2024-03-25T14:30:00")
-    private LocalDateTime measuredAt;
 }
