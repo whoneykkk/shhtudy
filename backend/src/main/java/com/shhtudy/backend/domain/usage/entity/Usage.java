@@ -6,12 +6,14 @@ import com.shhtudy.backend.domain.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.sql.ConnectionBuilder;
 import java.time.Duration;
 import java.time.LocalDateTime;
 
 @Entity
 @Getter
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Setter
+@NoArgsConstructor
 @Table(name = "usages")
 public class Usage extends BaseEntity {
 
@@ -35,7 +37,8 @@ public class Usage extends BaseEntity {
     }
 
     private Integer calculateUsedMinutes() {
-        return (int) Duration.between(this.checkInTime, this.checkOutTime).toMinutes();
+        if (checkInTime == null || checkOutTime == null) return 0;
+        return (int) Duration.between(checkInTime, checkOutTime).toMinutes();
     }
 
     public void expire() {
