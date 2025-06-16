@@ -19,8 +19,8 @@ public class UsageService {
     private final UserRepository userRepository;
 
     @Transactional
-    public void checkIn(String firebaseUid) {
-        User user = userRepository.findByFirebaseUid(firebaseUid)
+    public void checkIn(String userId) {
+        User user = userRepository.findByFirebaseUid(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
         Usage usage = Usage.checkIn(user);
@@ -29,18 +29,24 @@ public class UsageService {
     }
 
     @Transactional
-    public void checkOut(String firebaseUid) {
+    public void checkOut(String userId) {
+        User user = userRepository.findByFirebaseUid(userId)
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+
         Usage usage = usageRepository
-                .findTopByUser_FirebaseUidAndUsageStatusOrderByCheckInTimeDesc(firebaseUid, UsageStatus.IN_PROGRESS)
+                .findTopByUserAndUsageStatusOrderByCheckInTimeDesc(user, UsageStatus.IN_PROGRESS)
                 .orElseThrow(() -> new CustomException(ErrorCode.USAGE_NOT_FOUND));
 
         usage.checkOut();
     }
 
     @Transactional
-    public void expire(String firebaseUid) {
+    public void expire(String userId) {
+        User user = userRepository.findByFirebaseUid(userId)
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+
         Usage usage = usageRepository
-                .findTopByUser_FirebaseUidAndUsageStatusOrderByCheckInTimeDesc(firebaseUid, UsageStatus.IN_PROGRESS)
+                .findTopByUserAndUsageStatusOrderByCheckInTimeDesc(user, UsageStatus.IN_PROGRESS)
                 .orElseThrow(() -> new CustomException(ErrorCode.USAGE_NOT_FOUND));
 
         usage.expire();

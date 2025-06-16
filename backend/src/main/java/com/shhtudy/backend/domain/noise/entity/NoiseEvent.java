@@ -1,5 +1,7 @@
 package com.shhtudy.backend.domain.noise.entity;
 
+import com.shhtudy.backend.domain.common.BaseEntity;
+import com.shhtudy.backend.domain.noise.dto.NoiseEventSummaryDto;
 import com.shhtudy.backend.domain.user.entity.User;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.persistence.*;
@@ -14,22 +16,12 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Schema(description = "소음 이벤트 엔티티")
-public class NoiseEvent {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Schema(description = "소음 이벤트 고유 ID")
-    private Long id;
+@Schema(description = "소음 초과 이벤트 엔티티")
+public class NoiseEvent extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
-
- // 소음 세션 엔티티와 연결. 실행하는데 오류뜨길래 추가했는데 이상하면 지우렴
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "session_id", nullable = false)
-    private NoiseSession session;
 
     @Schema(description = "측정된 데시벨 값", example = "55.0")
     @Column(nullable = false)
@@ -38,8 +30,4 @@ public class NoiseEvent {
     @Schema(description = "측정 시각", example = "2024-03-25T14:30:00")
     @Column(name = "measured_at", nullable = false)
     private LocalDateTime measuredAt;
-
-    @Column(name = "created_at", nullable = false, updatable = false)
-    @Schema(description = "소음 이벤트 생성 시각", example = "2024-03-25T14:30:00")
-    private LocalDateTime createdAt = LocalDateTime.now();
 }

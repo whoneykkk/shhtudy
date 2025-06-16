@@ -1,6 +1,5 @@
 package com.shhtudy.backend.domain.noise.dto;
 
-import com.shhtudy.backend.domain.user.entity.User;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
@@ -12,8 +11,8 @@ import java.util.List;
 @Schema(description = "소음 세션 레포트 응답 DTO")
 public class NoiseReportResponseDto {
 
-    @Schema(description = "현재 사용자 등급", example = "SILENT")
-    private User.Grade grade;
+    @Schema(description = "현재 사용자 등급", example = "B")
+    private String grade;
 
     @Schema(description = "평균 데시벨", example = "42.3")
     private double avgDecibel;

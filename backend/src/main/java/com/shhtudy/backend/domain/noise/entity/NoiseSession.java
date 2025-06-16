@@ -1,5 +1,6 @@
 package com.shhtudy.backend.domain.noise.entity;
 
+import com.shhtudy.backend.domain.common.BaseEntity;
 import com.shhtudy.backend.domain.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
@@ -12,12 +13,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class NoiseSession {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
+public class NoiseSession extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
@@ -40,9 +36,4 @@ public class NoiseSession {
     @Column(name = "quiet_ratio", nullable = false)
     @Setter
     private double quietRatio;
-
-    @Column(name = "created_at", nullable = false)
-    @Setter
-    private LocalDateTime createdAt;
-
 }
