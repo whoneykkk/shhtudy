@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mysql-container
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_DATABASE: shhtudy_db
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: .
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      - FIREBASE_CONFIG_PATH=/app/firebase/firebase-service-account.json
+      - FIREBASE_PROJECT_ID=shhtudy-44b72
+      - FIREBASE_PRIVATE_KEY_ID=dd5a5f7953f3a09e8256d8ec5d0450623b0f78a9
+      - FIREBASE_PRIVATE_KEY=-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDB98PNT2wqodKR\nGpc9mEdQ8E+3YcVoYfOclaioc/oJvzElwMi0PVg+eOkCH03YahDbJtdoBzKGzBD7\nyncxDH00PAG/ArUqhelbA9I/sa9ueRP5dY74SPWA86gYnqCi8v8qUcy+MYwlzWlO\n4n6ZzX4dDyJvDgdmjba0ozoYv+Y5k125fi5JGrvMhkfHIR87wqXAKFWsfTyP+uhM\nAZbAOOnC2Luu4gjpEFifDP1pHGg6Ww6IcoBE9wmcbhFI+4ewFNISI5DROM08IzG7\nqqZrq+yAWs2aBgNtPK22wwInpn28Vhicyosp0qejoCe7bCVBQCvnudmbjiMgrTxC\nuQGi3qD3AgMBAAECggEAA7/ZKkH+RRwIA3kK8mGxWI2vT3aq3Q0uVdkIv7+E1k+6\npfsCMNsSC8caOJ8dSfEm7pg4yBCCOAaAJOCG3vevAJBRDP2tkysFK0FkJ4oKP5hE\nkWkQgJknHGfZWHx8fhnfYn8z9iXkCnkG2kOuOc/glQmNW1iJ6RVqh4xeMPXzVSqM\n8RPyJgCzO1jtF6cR2k1urbiPKvfzvuL/ZWNoZI67KMRchQxDlBzTwx0pqFwq4MZL\n5uKbnhPRcCK4OSJQYjiYygpSp16yG7Renw8MK5vCYMvrmb4h8XKzjdSZTQg1yLXY\nD2X3U3hIo43ZWA6qrY0lHeFCPIiuNOmwzUfr4aHDIQKBgQDxotcnTRTtEpNEt+gf\n87c/oHoypMaj/kdVANYCGBFC4cVdcMAvf70RAYe9D4q81yyxlX67vov9yWlgT0oO\ncCblKSpjilLx5NGmQyY9L9955sgHLzXPoiaavi3arIrMvV+AX7v1vErlUSYfMe4T\nX5tsjZegb2DbddBO0TD5xEHCIQKBgQDNf4UzYoHWIFZpxFHaDrKW09GoZXy5eSIo\nA021d8yjlDbXpJicvtLZskhNrraRbpjSqCW/eCajsh1w2E8gBl/lTew0YMta8LNi\n1XB1w76TBbFGq6rHu3aZlSmnzt4YNPWysg4iW2NuJ86Od4FbSv75rjCdYM0tNb7X\nfXFMOpAwFwKBgQC16PvE0JjiaUuJPlJ4S4g3VF7qZXZN245kBf8XEHteOI3W7J0i\npS328Yn44Qx3Yh55iqwgNzE43DqCkO6VtAT0HGuXCHmtNbBHVOIiyjmZkg4gqn/+\nUnpxoJ7ws1jDDgYppOjh9OEFhnQGpBYxa5acwHPYCkGGtkkeLQqL3h4LQQKBgAg0\ntGP15gtf5TN6BG65sYX2VWPtEYryfFuurha1/vT1QS9hQjrYH+FTjjGT7XRnPzEC\nR+eaa6iTvzs3WAmGV6P3dZwt1VD/VZp3vXLmayDB1G9nAX3STY0aeLxbtWCwFLOb\nCpdyoMjQTB5CRWcY2o+r1gMiz26ju8gtGS4bFJDnAoGAQLcSu9UfRWvAqUelM0yk\nb31E7Y2qzU/IWyrxOaJ6mVawzMKUBNJ45AGGA3FVizj2gyNAkCGsrKmq0l/xV2LM\n3RW2IDAtJo95fPJwDvaef7irh99OngVv8lKoI5F/9rUaKos4fEIePw7lc/pWLHzL\n2jrs0Nec54IoP8G98cva2+g=\n-----END PRIVATE KEY-----\n
+      - FIREBASE_CLIENT_EMAIL=firebase-adminsdk-fbsvc@shhtudy-44b72.iam.gserviceaccount.com
+      - FIREBASE_CLIENT_ID=109001455253473379159
+    volumes:
+      - ./firebase/firebase-service-account.json:/app/firebase/firebase-service-account.json
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  mysql_data:
