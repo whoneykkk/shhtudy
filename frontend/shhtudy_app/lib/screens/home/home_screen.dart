@@ -601,7 +601,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     child: CircularProgressIndicator(),
                                   )
                                 : Text(
-                                    (userProfile?.mannerScore ?? 100).toString().padLeft(3, '0'),
+                                    (userProfile?.mannerScore ?? 100).toString(),
                                 style: TextStyle(
                                   fontSize: 40,
                                   fontWeight: FontWeight.w700,

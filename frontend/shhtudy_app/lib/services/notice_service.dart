@@ -11,7 +11,7 @@ class NoticeService {
   static final String baseUrl = ApiConfig.baseUrl;
 
   // 공지사항 목록 조회
-  static Future<List<Map<String, dynamic>>> getNotices() async {
+  static Future<List<Notice>> getNotices() async {
     try {
       final token = await UserService.getToken();
       if (token == null) {
@@ -25,32 +25,21 @@ class NoticeService {
         },
       );
 
-      print('공지사항 API 응답 상태 코드: ${response.statusCode}');
-      print('공지사항 API 응답 본문: ${response.body}');
+      print('공지사항 목록 조회 응답 상태 코드: ${response.statusCode}');
+      print('공지사항 목록 조회 응답 본문: ${response.body}');
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
-        print('공지사항 데이터 구조: ${responseData.runtimeType}');
-        
-        if (responseData['data'] != null) {
-          print('data 필드 타입: ${responseData['data'].runtimeType}');
-          
-          // 페이지 형태의 응답인지 확인
-          if (responseData['data'] is Map && responseData['data']['content'] != null) {
-            final content = responseData['data']['content'];
-            print('content 필드 타입: ${content.runtimeType}');
-            return List<Map<String, dynamic>>.from(content);
-          }
-          print('공지사항 응답이 페이지 형태가 아닙니다');
-          return [];
+        if (responseData['data'] != null && responseData['data']['content'] != null) {
+          final List<dynamic> noticesJson = responseData['data']['content'];
+          return noticesJson.map((json) => Notice.fromJson(json)).toList();
         }
-        print('공지사항 데이터 없음');
-        return []; // 데이터가 없는 경우 빈 리스트 반환
+        return [];
       }
       
-      throw Exception('공지사항 로드 실패: ${response.statusCode}');
+      throw Exception('공지사항 목록 조회 실패: ${response.statusCode}');
     } catch (e) {
-      print('공지사항 로드 중 오류: $e');
+      print('공지사항 목록 조회 중 오류: $e');
       throw e;
     }
   }
@@ -136,12 +125,16 @@ class NoticeService {
         throw Exception('인증 토큰이 없습니다.');
       }
 
+      print('공지사항 상세 조회 요청 ID: $noticeId');
       final response = await http.get(
         Uri.parse('$baseUrl/api/notices/$noticeId'),
         headers: {
           'Authorization': 'Bearer $token',
         },
       );
+
+      print('공지사항 상세 조회 응답 상태 코드: ${response.statusCode}');
+      print('공지사항 상세 조회 응답 본문: ${response.body}');
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
