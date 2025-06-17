@@ -176,14 +176,16 @@ class _MessageScreenState extends State<MessageScreen> {
     try {
       final success = await MessageService.deleteMessage(message.messageId);
       if (success) {
-        // 메시지 목록에서 삭제
-        setState(() {
-          MyPageScreen.tempMessages.removeWhere((m) => m.messageId == message.messageId);
-        });
+        // 메시지 목록 새로고침
+        await _loadMessages();
         
-        // 마이페이지의 쪽지 섹션 업데이트를 위해 상태 변경
         if (mounted) {
-          Navigator.pop(context, true);  // true를 반환하여 마이페이지에서 새로고침하도록 함
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('쪽지가 삭제되었습니다.'),
+              backgroundColor: AppTheme.primaryColor,
+            ),
+          );
         }
       }
     } catch (e) {
@@ -303,23 +305,26 @@ class _MessageScreenState extends State<MessageScreen> {
   void _showDeleteMessageDialog(Message message) {
     showDialog(
       context: context,
+      useSafeArea: true,
+      useRootNavigator: false,
+      barrierDismissible: true,
       builder: (context) => AlertDialog(
         title: const Text('메시지 삭제'),
         content: Text('이 메시지를 삭제하시겠습니까?\n\n"${message.content}"'),
         actions: [
           TextButton(
-                    onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(context),
             child: Text('취소', style: TextStyle(color: AppTheme.textColor)),
           ),
           TextButton(
-                    onPressed: () {
-                      Navigator.pop(context);
+            onPressed: () {
+              Navigator.pop(context);
               _deleteMessage(message);
             },
             child: const Text('삭제', style: TextStyle(color: Colors.red)),
-                  ),
-                ],
-              ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -327,6 +332,9 @@ class _MessageScreenState extends State<MessageScreen> {
   void _showDeleteThreadDialog(ConversationThread thread) {
     showDialog(
       context: context,
+      useSafeArea: true,
+      useRootNavigator: false,
+      barrierDismissible: true,
       builder: (context) => AlertDialog(
         title: const Text('대화 삭제'),
         content: Text('${thread.counterpartName}과의 모든 대화(${thread.messages.length}개)를 삭제하시겠습니까?'),
