@@ -1,0 +1,13 @@
+.git
+.gitignore
+.gradle
+.idea
+.vscode
+build
+!build/libs/*.jar
+*.md
+.env
+*.log
+bin/
+firebase-token-test/
+.firebase/ 
