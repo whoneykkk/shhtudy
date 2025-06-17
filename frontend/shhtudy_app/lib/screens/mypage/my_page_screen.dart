@@ -38,28 +38,29 @@ class Notice {
   }
   
   // JSON 데이터로부터 객체 생성 (API 응답 처리용)
-  factory Notice.fromJson(Map<String, dynamic> json, {bool? isReadStatus}) {
-    return Notice(
-      id: json['id'] ?? 0,  // 백엔드에서 id로 전송
-      title: json['title'] ?? '',
-      content: json['previewContent'] ?? '',  // content 대신 previewContent 사용
-      createdAt: json['createdAt'] != null 
-          ? _parseBackendDateTime(json['createdAt']) 
-          : DateTime.now(),
-      isRead: isReadStatus ?? json['isRead'] ?? false,
-    );
-  }
-  
-  // 백엔드 날짜 형식(yyyy-MM-dd HH:mm)을 DateTime으로 변환
-  static DateTime _parseBackendDateTime(String dateTimeString) {
-    try {
-      // "yyyy-MM-dd HH:mm" 형식을 "yyyy-MM-ddTHH:mm:00" 형식으로 변환
-      final isoString = dateTimeString.replaceAll(' ', 'T') + ':00';
-      return DateTime.parse(isoString);
-    } catch (e) {
-      print('날짜 파싱 오류: $dateTimeString, 오류: $e');
-      return DateTime.now();
+  factory Notice.fromJson(Map<String, dynamic> json) {
+    print('Notice.fromJson - 입력 데이터: $json');
+    
+    // ID 처리 로직 개선
+    int id = 0;
+    if (json['id'] != null) {
+      if (json['id'] is String) {
+        id = int.tryParse(json['id']) ?? 0;
+      } else if (json['id'] is int) {
+        id = json['id'];
+      }
     }
+    print('Notice.fromJson - 변환된 ID: $id');
+    
+    return Notice(
+      id: id,
+      title: json['title'] ?? '',
+      content: json['previewContent'] ?? '',
+      createdAt: json['createdAt'] != null 
+          ? DateTime.parse(json['createdAt']) 
+          : DateTime.now(),
+      isRead: json['read'] ?? false,
+    );
   }
   
   static String _twoDigits(int n) {

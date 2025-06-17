@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 @Getter
 @Schema(description = "마이페이지 공지 단건 DTO")
 public class MyPageNoticeDto {
+    private final Long id;
     private final String title;
     @Schema(description = "공지 생성 시각", example = "2025.06.12 14:30")
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy.MM.dd HH:mm")
@@ -17,6 +18,7 @@ public class MyPageNoticeDto {
     private final boolean isRead;
 
     public MyPageNoticeDto(Notice notice, boolean isRead) {
+        this.id = notice.getId();
         this.title = notice.getTitle();
         this.createdAt = notice.getCreatedAt();
         this.isRead = isRead;

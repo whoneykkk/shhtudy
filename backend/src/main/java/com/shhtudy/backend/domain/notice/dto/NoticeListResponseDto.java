@@ -7,11 +7,13 @@ import lombok.Getter;
 @Getter
 @Schema(description = "공지 목록 응답 DTO")
 public class NoticeListResponseDto {
+    private final Long id;
     private final String title;
     private final String previewContent;
     private final boolean isRead;
 
     public NoticeListResponseDto(Notice notice, boolean isRead) {
+        this.id = notice.getId();
         this.title = notice.getTitle();
         this.previewContent = generatePreviewContent(notice.getContent());
         this.isRead = isRead;
