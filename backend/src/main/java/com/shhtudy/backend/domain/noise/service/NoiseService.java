@@ -143,9 +143,9 @@ public class NoiseService {
         int newPoints = Math.max(0, Math.min(300, currentPoints + sessionScore));
         user.setPoints(newPoints);
 
-        if (newPoints >= 240) {
+        if (newPoints >= 700) {
             user.setGrade(User.Grade.SILENT);
-        } else if (newPoints >= 160) {
+        } else if (newPoints >= 300) {
             user.setGrade(User.Grade.GOOD);
         } else {
             user.setGrade(User.Grade.WARNING);
