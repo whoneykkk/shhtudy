@@ -27,7 +27,7 @@ class _HomeScreenState extends State<HomeScreen> {
   UserProfile? userProfile;
   bool isLoading = true;
   double progressValue = 0.5;  // 프로그레스 바 초기값 50%
-  int? currentRealtimeDecibel; // 실시간 데시벨 값 (테스트용 임시값)
+  int? currentRealtimeDecibel; // 실시간 데시벨 값
   bool hasUnreadAlerts = false; // 읽지 않은 알림 여부
   
   // 시간 감소 타이머 관련
@@ -38,35 +38,30 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _loadUserProfile();
-    _loadRealtimeNoiseLevel(); // 실시간 소음 레벨 불러오기
     _checkUnreadAlerts(); // 읽지 않은 알림 확인
     _fetchNoticesAndMessages(); // 홈 화면에서도 공지사항과 메시지 로드
-    
-    // 외부 마이크 연동을 위한 리스너 설정 준비
-    // 실제 구현 시 마이크 데이터 스트림을 구독하는 방식으로 변경 예정
-    /*
-    // 실시간 소음 마이크 데이터 리스너 설정 예시
-    MicrophoneService.listenToNoiseLevel((int noiseLevel) {
-      if (mounted) {
-        setState(() {
-          currentRealtimeDecibel = noiseLevel;
-        });
-      }
+    _startTimeDecreaseTimer(); // 타이머 시작
+  }
+
+  // 실시간 소음 모니터링 시작
+  void _startRealtimeNoiseMonitoring() async {
+    await NoiseService.startNoiseMonitoring((int db) {
+      if (!mounted) return;
+      setState(() {
+        currentRealtimeDecibel = db;
+      });
     });
-    */
-    
-    // TODO: 외부 마이크 연동 전까지 임시로 주기적으로 업데이트 (개발 중에만 사용)
-    // 프로덕션에서는 외부 마이크 스트림 사용 예정
-    Timer.periodic(const Duration(seconds: 3), (timer) {
-      if (mounted) {
-        _loadRealtimeNoiseLevel();
-      } else {
-        timer.cancel();
-      }
-    });
-    
-    // 시간 감소 타이머 시작
-    _startTimeDecreaseTimer();
+  }
+
+  // 소음 세션 종료
+  Future<void> _endNoiseSession() async {
+    final success = await NoiseService.closeCurrentSession();
+    if (success) {
+      print('세션 종료 완료');
+      _loadUserProfile();
+    } else {
+      print('세션 종료 실패');
+    }
   }
 
   // 데이터베이스에서 공지사항과 메시지 불러오기
@@ -162,9 +157,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
-    // TODO: 마이크 리스너 정리 코드 추가 필요
-    // MicrophoneService.disposeListener();
-    _stopTimeDecreaseTimer(); // 타이머 정리
+    NoiseService.stopNoiseMonitoring(); // 소음 모니터링 중지
+    _timeDecreaseTimer?.cancel();
     super.dispose();
   }
 
@@ -177,42 +171,41 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       // 서버에서 최신 프로필 정보 가져오기
       final profile = await UserService.getUserProfile();
-      
       if (!mounted) return; // 위젯이 아직 유효한지 확인
-      
+
+      // 이전 좌석 정보 저장
+      final prevSeat = userProfile?.currentSeat;
+
       if (profile != null) {
         setState(() {
           userProfile = profile;
-          
-          // 로컬 남은 시간 초기화
-          _localRemainingTime = profile.remainingTime;
-          
-          // 프로그레스바 값 계산 - 포인트 기반으로 등급별 다른 범위 사용
+          // 좌석이 해제된 경우 남은 시간을 0으로 초기화
+          _localRemainingTime = profile.currentSeat == null ? 0 : profile.remainingTime;
           progressValue = _calculateProgress(profile.grade, profile.points);
-          
-          // 실시간 데시벨값은 별도 함수에서 로딩
           isLoading = false;
         });
-        
-        // 시간 타이머 재시작 (좌석 상태가 변경될 수 있으므로)
         _startTimeDecreaseTimer();
-        
-        // 프로필 로드 후 즉시 실시간 소음 레벨도 불러오기
-        _loadRealtimeNoiseLevel();
+
+        // 좌석이 새로 생겼을 때만 소음 측정 시작
+        if (profile.currentSeat != null && prevSeat == null) {
+          _startRealtimeNoiseMonitoring();
+        }
+        // 좌석이 해제된 경우 소음 측정 종료
+        if (profile.currentSeat == null && prevSeat != null) {
+          NoiseService.stopNoiseMonitoring();
+          // 좌석 해제 시 남은 시간 타이머도 중지
+          _timeDecreaseTimer?.cancel();
+        }
       } else {
-        // 서버에서 프로필을 가져오지 못한 경우 로그인 화면으로 이동
         setState(() {
           isLoading = false;
         });
-        
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('사용자 정보를 불러올 수 없습니다. 다시 로그인해주세요.'),
             duration: Duration(seconds: 3),
           ),
         );
-        
-        // 로그인 화면으로 이동
         Future.delayed(const Duration(seconds: 1), () {
           Navigator.pushAndRemoveUntil(
             context,
@@ -222,56 +215,12 @@ class _HomeScreenState extends State<HomeScreen> {
         });
       }
     } catch (e) {
-      if (!mounted) return;
-      
-      print('프로필 로딩 오류: $e');
-      
-      setState(() {
-        isLoading = false;
-      });
-      
-      // 오류 메시지 표시
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('데이터터 로딩 중 오류가 발생했습니다. 다시 로그인해주세요.'),
-          duration: Duration(seconds: 3),
-        ),
-      );
-      
-      // 로그인 화면으로 이동
-      Future.delayed(const Duration(seconds: 1), () {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => const LoginScreen()),
-          (route) => false,
-        );
-      });
-    }
-  }
-
-  // 실시간 소음 레벨 불러오기
-  Future<void> _loadRealtimeNoiseLevel() async {
-    try {
-      // 좌석이 없으면 실시간 소음 데이터를 가져오지 않음
-      if (userProfile?.currentSeat == null) {
-        setState(() {
-          currentRealtimeDecibel = null;
-        });
-        return;
-      }
-      
-      // TODO: 외부 마이크 연동 구현 전까지 임시로 서버에서 데이터 가져오기
-      // 실제 구현 시에는 이 함수가 마이크 모듈 초기화 역할만 담당하고
-      // 이후에는 스트림 리스너로 실시간 업데이트
-      final noiseLevel = await NoiseService.getCurrentNoiseLevel();
-      
+      print('사용자 프로필 로딩 오류: $e');
       if (mounted) {
         setState(() {
-          currentRealtimeDecibel = noiseLevel;
+          isLoading = false;
         });
       }
-    } catch (e) {
-      print('실시간 소음 레벨 불러오기 오류: $e');
     }
   }
 
@@ -786,6 +735,24 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
                 const SizedBox(height: 16),
+                // 체크아웃 버튼 추가
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.redAccent,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)
+                    ),
+                    elevation: 2,
+                  ),
+                  onPressed: _endNoiseSession,
+                  icon: const Icon(Icons.logout),
+                  label: const Text(
+                    '체크아웃',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
               ],
             ),
           ),
@@ -838,16 +805,21 @@ class _HomeScreenState extends State<HomeScreen> {
             _localRemainingTime = _localRemainingTime! - 1;
           });
           
-          // 시간이 0이 되면 알림
+          // 10분마다 서버와 동기화
+          if (_localRemainingTime! % 600 == 0) {
+            _loadUserProfile();
+          }
+          
+          // 시간이 0이 되면 알림 (좌석 해제는 서버에서 처리)
           if (_localRemainingTime == 0) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('이용 시간이 만료되었습니다. 추가 시간을 구매하거나 퇴실해주세요.'),
+                content: Text('이용 시간이 만료되었습니다. 좌석이 자동으로 해제됩니다.'),
                 backgroundColor: Colors.red,
                 duration: Duration(seconds: 5),
               ),
             );
-            // 프로필 새로고침으로 실제 남은 시간 확인
+            // 프로필 새로고침으로 좌석 해제 상태 반영
             Future.delayed(const Duration(seconds: 2), () {
               _loadUserProfile();
             });
@@ -855,11 +827,5 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       }
     });
-  }
-  
-  // 시간 감소 타이머 중지
-  void _stopTimeDecreaseTimer() {
-    _timeDecreaseTimer?.cancel();
-    _timeDecreaseTimer = null;
   }
 }

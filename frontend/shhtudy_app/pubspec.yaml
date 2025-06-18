@@ -37,6 +37,8 @@ dependencies:
   cupertino_icons: ^1.0.2
   http: ^1.2.0
   shared_preferences: ^2.2.2
+  noise_meter: ^5.0.2
+  permission_handler: ^11.1.0
   
   # Firebase 패키지 - 인증 기능 구현
   firebase_core: ^2.25.4

@@ -23,9 +23,9 @@ class NoiseLog {
   // 객체를 JSON 데이터로 변환 (API 요청 처리용)
   Map<String, dynamic> toJson() {
     return {
-      'level': level,
+      'decibel': level,
       'isExceeded': isExceeded,
-      'timestamp': timestamp.toIso8601String(),
+      'measuredAt': timestamp.toIso8601String(),
     };
   }
 } 

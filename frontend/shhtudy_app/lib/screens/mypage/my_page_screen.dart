@@ -259,6 +259,10 @@ class _MyPageScreenState extends State<MyPageScreen> {
             MyPageScreen.tempMessages = messagesJson.map((json) {
               return Message.fromJson(json, currentUserId);
             }).toList();
+            
+            // 최신 순으로 정렬
+            MyPageScreen.tempMessages.sort((a, b) => b.sentAt.compareTo(a.sentAt));
+            
             print('메시지 로드 성공: ${MyPageScreen.tempMessages.length}개');
           } else {
             print('메시지 응답이 페이지 형태가 아닙니다: ${responseData.runtimeType}');

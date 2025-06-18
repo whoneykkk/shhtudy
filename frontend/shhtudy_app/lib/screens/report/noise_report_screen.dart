@@ -9,6 +9,8 @@ import '../../models/noise_log.dart';
 import '../../models/user_profile.dart';
 import '../../services/alert_service.dart';
 import '../../widgets/profile_button.dart';
+import 'dart:math' as math;
+import 'dart:async'; // Timer 사용을 위해 추가
 
 class NoiseReportScreen extends StatefulWidget {
   const NoiseReportScreen({super.key});
@@ -18,13 +20,15 @@ class NoiseReportScreen extends StatefulWidget {
 }
 
 class _NoiseReportScreenState extends State<NoiseReportScreen> {
-  // 현재 페이지 인덱스 추적 및 PageController는 단일 차트이므로 완전히 제거합니다.
-  // int _currentPageIndex = 0;
-  // final PageController _pageController = PageController(initialPage: 0);
+  // 현재 페이지 인덱스 추적
+  int _currentPageIndex = 0;
+  final PageController _pageController = PageController(initialPage: 0);
   
   // 차트 타입 리스트
   final List<String> _chartTypes = [
     '일간 소음 변동 Line Chart',
+    // '주간 소음 추이 Line/Bar Chart',
+    // '좌석별 소음 비율 Bar Chart',
   ];
 
   // 데이터 상태 변수
@@ -42,12 +46,17 @@ class _NoiseReportScreenState extends State<NoiseReportScreen> {
   int _quietnessPercentage = 0;
   int _avgQuietnessPercentage = 0;
 
+  // 일간 소음 변동 차트 데이터
+  List<FlSpot> _dailyNoiseSpots = [];
+  Timer? _dailyChartUpdateTimer;
+
   @override
   void initState() {
     super.initState();
     _loadUserProfile(); // 사용자 프로필을 먼저 로드
     _loadNoiseData();
     _checkUnreadAlerts(); // 읽지 않은 알림 확인
+    _startDailyNoiseChartUpdate(); // 일간 소음 차트 업데이트 시작
   }
 
   // 사용자 프로필 로드
@@ -82,52 +91,47 @@ class _NoiseReportScreenState extends State<NoiseReportScreen> {
     });
 
     try {
-      // 소음 통계 데이터 가져오기
-      final noiseStats = await NoiseService.getNoiseStats();
-      
-      // 소음 로그 데이터 가져오기
+      // 사용자 프로필과 소음 로그 데이터를 동시에 가져옵니다.
+      final profile = await UserService.getUserProfile();
       final logs = await NoiseService.getNoiseLogs();
       final noiseLogs = logs.map((log) => NoiseLog.fromJson(log)).toList();
-      
+
       if (!mounted) return;
-      
-      // 로그 데이터에서 최고 데시벨 및 소음 초과 횟수 계산
-      int maxDb = 0;
-      int exceededCount = 0;
-      
-      for (var log in noiseLogs) {
-        // 최고 데시벨 업데이트
-        if (log.level > maxDb) {
-          maxDb = log.level;
-        }
-        
-        // 소음 초과 횟수 카운트
-        if (log.isExceeded) {
-          exceededCount++;
-        }
+
+      // 보고서에 필요한 통계 데이터를 가져온 noiseLogs를 기반으로 직접 계산합니다.
+      double reportAverageDecibel = 0;
+      double reportMaxDecibel = 0;
+      int reportQuietCount = 0;
+      int reportNoiseExceededCount = 0;
+
+      if (noiseLogs.isNotEmpty) {
+        final totalDecibel = noiseLogs.fold<double>(0, (sum, log) => sum + log.level);
+        reportAverageDecibel = totalDecibel / noiseLogs.length;
+        reportMaxDecibel = noiseLogs
+            .map((log) => log.level.toDouble())
+            .reduce((a, b) => a > b ? a : b);
+        reportQuietCount = noiseLogs.where((log) => log.level <= NoiseService.quietThreshold).length;
+        reportNoiseExceededCount = noiseLogs.where((log) => log.level > NoiseService.quietThreshold).length;
       }
-      
+
       setState(() {
-        _grade = noiseStats?['grade'] ?? _userProfile?.grade ?? 'GOOD';
-        _averageDecibel = noiseStats?['averageDecibel'] ?? _userProfile?.averageDecibel ?? 40.0;
-        // 좌석 정보는 이미 _loadUserProfile에서 설정했으므로 여기서는 업데이트하지 않음
-        if (_currentSeatCode == null) {
-          _currentSeatCode = noiseStats?['currentSeat'] ?? '--';
-        }
+        _userProfile = profile; // 사용자 프로필 업데이트
+        _grade = profile?.grade ?? 'GOOD'; // 사용자 프로필에서 등급 가져오기
+        _averageDecibel = reportAverageDecibel;
+        _currentSeatCode = profile?.currentSeat ?? '--'; // 사용자 프로필에서 좌석 정보 가져오기
         _noiseLogs = noiseLogs;
-        
-        // 추가 통계 데이터 설정
-        _maxDecibel = maxDb;
-        _noiseExceededCount = exceededCount;
-        _quietnessPercentage = 79; // 임시로 조용 비율 79%로 하드코딩
-        _avgQuietnessPercentage = 75; // 전체 사용자 평균은 API 추가 전까지 75%로 하드코딩
-        
+
+        _maxDecibel = reportMaxDecibel.toInt();
+        _noiseExceededCount = reportNoiseExceededCount;
+        _quietnessPercentage = noiseLogs.isEmpty ? 0 : (reportQuietCount / noiseLogs.length * 100).toInt();
+        _avgQuietnessPercentage = 75; // 전체 사용자 평균은 API 추가 전까지 75%로 유지
+
         _isLoading = false;
       });
     } catch (e) {
       print('소음 데이터 로드 오류: $e');
       if (!mounted) return;
-      
+
       setState(() {
         _grade = _userProfile?.grade ?? 'GOOD';
         _averageDecibel = _userProfile?.averageDecibel ?? 40.0;
@@ -143,7 +147,8 @@ class _NoiseReportScreenState extends State<NoiseReportScreen> {
 
   @override
   void dispose() {
-    // PageController가 없으므로 dispose할 필요가 없습니다.
+    _pageController.dispose();
+    _dailyChartUpdateTimer?.cancel(); // 타이머 해제
     super.dispose();
   }
 
@@ -189,7 +194,8 @@ class _NoiseReportScreenState extends State<NoiseReportScreen> {
                         const Spacer(),
                         // 좌석 번호
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
                             color: AppTheme.accentColor,
                             borderRadius: BorderRadius.circular(20),
@@ -203,7 +209,7 @@ class _NoiseReportScreenState extends State<NoiseReportScreen> {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        // 프로필 버튼 (새 위젯으로 교체)
+                        // 프로필 버튼
                         ProfileButton(
                           hasUnreadAlerts: hasUnreadAlerts,
                           onTap: () {
@@ -211,7 +217,6 @@ class _NoiseReportScreenState extends State<NoiseReportScreen> {
                               context, 
                               MaterialPageRoute(builder: (context) => const MyPageScreen())
                             ).then((_) {
-                              // 마이페이지에서 돌아오면 알림 상태 다시 확인
                               _checkUnreadAlerts();
                             });
                           },
@@ -227,7 +232,8 @@ class _NoiseReportScreenState extends State<NoiseReportScreen> {
                         // 현재 등급
                         Expanded(
                           child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 16, horizontal: 20),
                             decoration: BoxDecoration(
                               color: AppTheme.accentColor,
                               borderRadius: BorderRadius.circular(12),
@@ -259,7 +265,8 @@ class _NoiseReportScreenState extends State<NoiseReportScreen> {
                         // 평균 데시벨
                         Expanded(
                           child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 16, horizontal: 20),
                             decoration: BoxDecoration(
                               color: AppTheme.accentColor,
                               borderRadius: BorderRadius.circular(12),
@@ -279,7 +286,8 @@ class _NoiseReportScreenState extends State<NoiseReportScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.end,
                                   children: [
                                     Text(
-                                      _averageDecibel?.toStringAsFixed(0) ?? '--',
+                                      _averageDecibel?.toStringAsFixed(0) ??
+                                          '--',
                                       style: TextStyle(
                                         fontSize: 24,
                                         fontWeight: FontWeight.bold,
@@ -287,12 +295,14 @@ class _NoiseReportScreenState extends State<NoiseReportScreen> {
                                       ),
                                     ),
                                     Padding(
-                                      padding: const EdgeInsets.only(left: 2, bottom: 4),
+                                      padding: const EdgeInsets.only(
+                                          left: 2, bottom: 4),
                                       child: Text(
                                         'db',
                                         style: TextStyle(
                                           fontSize: 12,
-                                          color: AppTheme.textColor.withOpacity(0.6),
+                                          color: AppTheme.textColor
+                                              .withOpacity(0.6),
                                         ),
                                       ),
                                     ),
@@ -313,7 +323,7 @@ class _NoiseReportScreenState extends State<NoiseReportScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // 차트 섹션 (슬라이드 가능)
+                          // 차트 섹션
                           Container(
                             width: double.infinity,
                             decoration: BoxDecoration(
@@ -329,7 +339,7 @@ class _NoiseReportScreenState extends State<NoiseReportScreen> {
                                   child: Row(
                                     children: [
                                       Text(
-                                        _chartTypes[0], // 이제 항상 첫 번째 차트 타입
+                                        _chartTypes[0],
                                         style: TextStyle(
                                           color: AppTheme.primaryColor,
                                           fontWeight: FontWeight.bold,
@@ -341,7 +351,7 @@ class _NoiseReportScreenState extends State<NoiseReportScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 16),
-                                // PageView 대신 단일 차트 직접 표시
+                                // 차트
                                 SizedBox(
                                   height: 250,
                                   child: _buildDailyNoiseLineChart(),
@@ -441,7 +451,7 @@ class _NoiseReportScreenState extends State<NoiseReportScreen> {
                                 ),
                                 const SizedBox(height: 20),
                                 
-                                // 통계 카드 간소화
+                                // 통계 카드
                                 Container(
                                   padding: const EdgeInsets.all(16),
                                   decoration: BoxDecoration(
@@ -622,10 +632,10 @@ class _NoiseReportScreenState extends State<NoiseReportScreen> {
       ),
     );
   }
-  
+
   // 소음 로그 카드 위젯
   Widget _buildNoiseLogCard(NoiseLog item) {
-    final bool isExceeded = item.isExceeded;
+    final bool isExceeded = item.level > 45;
     final Color statusColor = isExceeded ? Colors.red : AppTheme.primaryColor;
     
     // 시간 포맷팅
@@ -742,12 +752,43 @@ class _NoiseReportScreenState extends State<NoiseReportScreen> {
 
   // 소음 비율에 따른 피드백 메시지
   String _getFeedbackMessage(int quietPercentage) {
+    // 전체 평균과의 차이 계산
+    final int difference = quietPercentage - _avgQuietnessPercentage;
+
+    // 절대적 기준과 상대적 기준 모두 고려
     if (quietPercentage >= 80) {
-      return '오늘 하루 집중하기 딱 좋은 환경이었어요. 멋진 분위기, 최고예요!';
+      if (difference >= 5) {
+        // 조용 비율이 매우 높고, 평균보다 더 높은 경우
+        return '오늘 하루 집중하기 딱 좋은 환경이었어요. 멋진 분위기, 최고예요!';
+      } else if (difference >= -5) {
+        // 조용 비율이 매우 높지만, 평균과 비슷하거나 낮은 경우
+        return '오늘 하루 집중하기 좋은 환경이었어요. 다른 분들도 모두 집중하는 분위기었네요!';
+      } else {
+        // 조용 비율이 매우 높지만, 평균과 비슷하거나 낮은 경우
+        return '가끔 집중이 잘 되지 않는 날도 있죠. 모두의 작은 배려로 더 좋은 공간이 될 수 있어요!';
+      }
     } else if (quietPercentage >= 70) {
-      return '좋은 하루였어요. 모두의 작은 배려로 더 좋은 공간이 될 수 있어요!';
+      if (difference >= 5) {
+        // 조용 비율이 적당히 높고, 평균보다 더 높은 경우
+        return '좋은 하루였어요. 주변보다 더 조용한 환경을 유지하셨네요!';
+      } else if (difference >= -5) {
+        // 조용 비율이 적당히 높고, 평균과 비슷한 경우
+        return '좋은 하루였어요. 모두의 작은 배려로 더 좋은 공간이 될 수 있어요!';
+      } else {
+        // 조용 비율이 적당히 높지만, 평균보다 낮은 경우
+        return '가끔 집중이 잘 되지 않는 날도 있죠. 모두의 작은 배려로 더 좋은 공간이 될 수 있어요!';
+      }
     } else {
-      return '가끔 집중이 잘 되지 않는 날도 있죠. 모두의 작은 배려로 더 좋은 공간이 될 수 있어요!';
+      if (difference >= 0) {
+        // 조용 비율이 낮지만, 평균보다는 높거나 같은 경우 (드문 경우)
+        return '오늘은 전체적으로 시끄러운 환경이었네요. 모두의 작은 배려로 더 좋은 공간이 될 수 있어요!';
+      } else if (difference >= -10) {
+        // 조용 비율이 낮고, 평균보다 조금 낮은 경우
+        return '오늘은 조금 시끄러운 환경이었네요. 모두의 작은 배려로 더 좋은 공간이 될 수 있어요!';
+      } else {
+        // 조용 비율이 낮고, 평균보다 많이 낮은 경우
+        return '때로는 소란스러울 수도 있죠. 다음에는 모두 함께 더 좋은 공간을 만들어나가요.';
+      }
     }
   }
 
@@ -769,19 +810,55 @@ class _NoiseReportScreenState extends State<NoiseReportScreen> {
 
   // 일간 소음 변동 Line Chart 위젯
   Widget _buildDailyNoiseLineChart() {
-    // 임시 데이터
-    List<FlSpot> spots = [
-      FlSpot(0, 42),  // 08:00, 42dB
-      FlSpot(1, 38),  // 09:00, 38dB
-      FlSpot(2, 45),  // 10:00, 45dB
-      FlSpot(3, 55),  // 11:00, 55dB
-      FlSpot(4, 50),  // 12:00, 50dB
-      FlSpot(5, 43),  // 13:00, 43dB
-      FlSpot(6, 47),  // 14:00, 47dB
-      FlSpot(7, 41),  // 15:00, 41dB
-      FlSpot(8, 36),  // 16:00, 36dB
-    ];
+    if (_noiseLogs.isEmpty) {
+      return const Center(
+        child: Text(
+          '소음 로그 데이터가 없습니다.',
+          style: TextStyle(color: Colors.grey),
+        ),
+      );
+    }
+
+    // 가장 최근 로그가 있는 날짜를 기준으로 필터링
+    // 모든 로그를 확인하여 가장 최근 날짜를 찾음
+    DateTime latestDay = _noiseLogs.reduce((a, b) => a.timestamp.isAfter(b.timestamp) ? a : b).timestamp;
     
+    List<NoiseLog> dailyLogs = _noiseLogs.where((log) =>
+        log.timestamp.year == latestDay.year &&
+        log.timestamp.month == latestDay.month &&
+        log.timestamp.day == latestDay.day).toList();
+
+    if (dailyLogs.isEmpty) {
+      return const Center(
+        child: Text(
+          '해당 날짜의 소음 로그 데이터가 없습니다.',
+          style: TextStyle(color: Colors.grey),
+        ),
+      );
+    }
+
+    // 시간별 평균 데시벨 계산
+    Map<int, List<int>> hourlyDecibels = {};
+    for (var log in dailyLogs) {
+      final hour = log.timestamp.hour;
+      // Chart's X-axis starts from 8 AM (value 0). So only include logs from 8 AM to 4 PM (value 8).
+      if (hour >= 8 && hour <= 16) { 
+        hourlyDecibels.putIfAbsent(hour, () => []).add(log.level);
+      }
+    }
+
+    List<FlSpot> spots = [];
+    for (int i = 8; i <= 16; i++) { // 8 AM to 4 PM (X-axis range 0 to 8)
+      if (hourlyDecibels.containsKey(i)) {
+        final levels = hourlyDecibels[i]!;
+        if (levels.isNotEmpty) {
+          final average = levels.reduce((a, b) => a + b) / levels.length;
+          spots.add(FlSpot((i - 8).toDouble(), average));
+        }
+      }
+    }
+    spots.sort((a, b) => a.x.compareTo(b.x)); // X축 값 기준으로 정렬
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: LineChart(
@@ -790,7 +867,7 @@ class _NoiseReportScreenState extends State<NoiseReportScreen> {
             show: true,
             drawVerticalLine: true,
             horizontalInterval: 10,
-            verticalInterval: 1,
+            verticalInterval: 1, 
             getDrawingHorizontalLine: (value) {
               return FlLine(
                 color: AppTheme.primaryColor.withOpacity(0.1),
@@ -817,8 +894,8 @@ class _NoiseReportScreenState extends State<NoiseReportScreen> {
                 showTitles: true,
                 reservedSize: 30,
                 interval: 1,
-                getTitlesWidget: (value, meta) {
-                  int hour = (value.toInt() + 8); // 8시부터 시작
+                getTitlesWidget: (value, meta) { // 8시부터 시작하도록 조정
+                  int hour = (value.toInt() + 8); // 0 on x-axis is 8 AM
                   return SideTitleWidget(
                     axisSide: meta.axisSide,
                     space: 8.0,
@@ -861,8 +938,8 @@ class _NoiseReportScreenState extends State<NoiseReportScreen> {
               width: 1,
             ),
           ),
-          minX: 0,
-          maxX: 8,
+          minX: 0, // X축 최소값 (8 AM)
+          maxX: 8, // X축 최대값 (4 PM)
           minY: 30,
           maxY: 60,
           lineBarsData: [
@@ -875,7 +952,7 @@ class _NoiseReportScreenState extends State<NoiseReportScreen> {
               dotData: FlDotData(
                 show: true,
                 getDotPainter: (spot, percent, barData, index) {
-                  Color dotColor = spot.y > 50 ? Colors.red : AppTheme.primaryColor;
+                  Color dotColor = spot.y > NoiseService.quietThreshold ? Colors.red : AppTheme.primaryColor;
                   return FlDotCirclePainter(
                     radius: 3,
                     color: dotColor,
@@ -894,6 +971,77 @@ class _NoiseReportScreenState extends State<NoiseReportScreen> {
     );
   }
 
+  // 주간 소음 추이 Line/Bar Chart 위젯
+  Widget _buildWeeklyNoiseChart() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '주간 데이터는 아직 준비 중입니다',
+            style: TextStyle(
+              color: AppTheme.textColor.withOpacity(0.7),
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 8),
+          // 샘플 UI 표시
+          Container(
+            height: 200,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              color: AppTheme.backgroundColor.withOpacity(0.5),
+            ),
+            child: Center(
+              child: Icon(
+                Icons.bar_chart,
+                size: 80,
+                color: AppTheme.primaryColor.withOpacity(0.3),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 좌석별 소음 비율 Bar Chart 위젯
+  Widget _buildSeatNoiseBarChart() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '좌석별 데이터는 아직 준비 중입니다',
+            style: TextStyle(
+              color: AppTheme.textColor.withOpacity(0.7),
+              fontSize: 14,
+            ),
+
+          ),
+          const SizedBox(height: 8),
+          // 샘플 UI 표시
+          Container(
+            height: 200,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              color: AppTheme.backgroundColor.withOpacity(0.5),
+            ),
+            child: Center(
+              child: Icon(
+                Icons.grid_view,
+                size: 80,
+                color: AppTheme.primaryColor.withOpacity(0.3),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   List<NoiseLog> _getLatestNoiseLogs() {
     // 최신 3개의 소음 로그만 표시
     final logs = [..._noiseLogs];
@@ -903,7 +1051,9 @@ class _NoiseReportScreenState extends State<NoiseReportScreen> {
 
   List<Widget> _buildNoiseLogItems() {
     // 최신 3개의 소음 로그만 표시
-    return _getLatestNoiseLogs().map((item) => _buildNoiseLogCard(item)).toList();
+    return _getLatestNoiseLogs()
+        .map((item) => _buildNoiseLogCard(item))
+        .toList();
   }
 
   // 조용 비율에 따른 색상 반환
@@ -911,5 +1061,64 @@ class _NoiseReportScreenState extends State<NoiseReportScreen> {
     if (percentage >= 80) return AppTheme.primaryColor;
     if (percentage >= 60) return Colors.orange;
     return Colors.red;
+  }
+
+  // 일간 소음 차트 업데이트 시작
+  void _startDailyNoiseChartUpdate() {
+    _dailyChartUpdateTimer = Timer.periodic(const Duration(seconds: 10), (timer) async { // 10초마다 업데이트
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      await _loadDailyNoiseEventsForChart();
+    });
+    _loadDailyNoiseEventsForChart(); // 초기 로드
+  }
+
+  // 일간 소음 이벤트 데이터를 가져와 차트 데이터로 가공
+  Future<void> _loadDailyNoiseEventsForChart() async {
+    try {
+      final events = await NoiseService.getRecentNoiseEvents(); // 최신 이벤트 가져오기
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+
+      // 오늘 날짜의 데이터만 필터링
+      final todayEvents = events.where((event) {
+        final measuredAt = DateTime.parse(event['measuredAt']);
+        return measuredAt.year == today.year &&
+               measuredAt.month == today.month &&
+               measuredAt.day == today.day;
+      }).toList();
+
+      // 시간대별 평균 데시벨 계산
+      Map<int, List<int>> hourlyDecibels = {};
+      for (var event in todayEvents) {
+        final measuredAt = DateTime.parse(event['measuredAt']);
+        final hour = measuredAt.hour;
+        hourlyDecibels.putIfAbsent(hour, () => []).add(event['decibel']?.toInt() ?? 0);
+      }
+
+      List<FlSpot> newSpots = [];
+      for (int hour = 0; hour < 24; hour++) {
+        if (hourlyDecibels.containsKey(hour)) {
+          final avgDecibel = hourlyDecibels[hour]!.reduce((a, b) => a + b) / hourlyDecibels[hour]!.length;
+          newSpots.add(FlSpot(hour.toDouble(), avgDecibel));
+        } else {
+          // 데이터가 없는 시간대는 0으로 표시 (혹은 이전 값 유지 등 다른 전략 고려 가능)
+          newSpots.add(FlSpot(hour.toDouble(), 0));
+        }
+      }
+
+      // 시간에 따라 정렬
+      newSpots.sort((a, b) => a.x.compareTo(b.x));
+
+      if (mounted) {
+        setState(() {
+          _dailyNoiseSpots = newSpots;
+        });
+      }
+    } catch (e) {
+      print('일간 소음 이벤트 차트 데이터 로드 중 오류: $e');
+    }
   }
 } 

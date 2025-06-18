@@ -313,18 +313,18 @@ class _MessageScreenState extends State<MessageScreen> {
         content: Text('이 메시지를 삭제하시겠습니까?\n\n"${message.content}"'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+                    onPressed: () => Navigator.pop(context),
             child: Text('취소', style: TextStyle(color: AppTheme.textColor)),
           ),
           TextButton(
-            onPressed: () {
-              Navigator.pop(context);
+                    onPressed: () {
+                      Navigator.pop(context);
               _deleteMessage(message);
             },
             child: const Text('삭제', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
+                  ),
+                ],
+              ),
     );
   }
 

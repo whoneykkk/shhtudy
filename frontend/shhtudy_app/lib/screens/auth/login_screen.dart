@@ -11,6 +11,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../models/user_profile.dart';
 import '../../services/user_service.dart';
 import '../../config/api_config.dart';
+import 'package:flutter/foundation.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -34,10 +35,21 @@ class _LoginScreenState extends State<LoginScreen> {
       final String email = "${phoneController.text}@shhtudy.com";
       print('Firebase 로그인 시도 - 이메일: $email');
       
+      // 에뮬레이터 환경에서는 토큰 검증 우회
+      if (kDebugMode) {
+        print('개발 모드: 토큰 검증 우회');
+        return 'dummy-token-for-development';
+      }
+      
       // Firebase로 로그인
       final UserCredential userCredential = await _auth.signInWithEmailAndPassword(
         email: email,
         password: passwordController.text,
+      ).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          throw TimeoutException('Firebase 인증 시간이 초과되었습니다.');
+        },
       );
       
       print('Firebase 로그인 성공 - 사용자: ${userCredential.user?.uid}');
@@ -61,14 +73,21 @@ class _LoginScreenState extends State<LoginScreen> {
           case 'invalid-credential':
             errorMessage = '로그인 정보가 잘못되었거나 만료되었습니다.';
             break;
+          case 'too-many-requests':
+            errorMessage = '너무 많은 로그인 시도가 있었습니다. 잠시 후 다시 시도해주세요.';
+            break;
           default:
             errorMessage = '로그인 오류: ${e.code}';
         }
-      }     
-// 오류 메시지를 컨텍스트 대신 변수에 저장 (컨텍스트는 이 비동기 함수에서 사용 불가)
+      } else if (e is TimeoutException) {
+        errorMessage = e.message ?? '로그인 시간이 초과되었습니다.';
+      }
+      
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(errorMessage)),
         );
+      }
       return null;
     }
   }
